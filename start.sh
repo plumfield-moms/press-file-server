@@ -70,6 +70,5 @@ echo "Starting Plumfield Press Review System..."
 
 # Run everything concurrently (LaunchAgent safe)
 pnpm concurrently \
-  "pnpm run server" \
-  "pnpm run client" \
+  "pnpm start" \
   "cloudflared tunnel run --token $TUNNEL_TOKEN"
