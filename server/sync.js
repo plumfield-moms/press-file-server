@@ -24,6 +24,7 @@ function proofSync() {
   }
 
   let files;
+  let pdfs;
   try {
     files = fs.readdirSync(PROOFS_DIR);
     const pdfs = files.filter(
