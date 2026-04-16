@@ -6,11 +6,13 @@ import { Download, CheckCircle, Clock, ArrowRight, User } from 'lucide-react';
 type Proof = {
   id: string;
   book_title: string;
-  current_stage: 'ed' | 'diane' | 'done';
+  current_stage: 'ed' | 'diane' | 'sara' | 'greta' | 'done';
   created_at: number;
   files: {
     original: boolean;
     ed: boolean;
+    diane: boolean;
+    sara: boolean;
     done: boolean;
   };
 };
@@ -26,7 +28,7 @@ function App() {
   const { data: me, isLoading: isLoadingMe, error: meError } = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
-      const res = await api.get<{ user: 'ed' | 'diane' }>('/me');
+      const res = await api.get<{ user: 'ed' | 'diane' | 'sara' | 'greta' }>('/me');
       return res.data;
     },
     retry: false,
@@ -78,7 +80,7 @@ function App() {
   return (
     <div className="min-h-screen bg-paper text-gray-800">
       <header className="bg-plum text-paper shadow-lg">
-        <div className="max-w-6xl mx-auto px-6 py-6 flex justify-between items-center">
+        <div className="max-w-7xl mx-auto px-6 py-6 flex justify-between items-center">
           <h1 
             className="text-2xl font-black tracking-tight cursor-pointer hover:opacity-90 transition" 
             onClick={() => setViewId(null)}
@@ -93,7 +95,7 @@ function App() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-10">
+      <main className="max-w-7xl mx-auto px-6 py-10">
         {viewId ? (
           <ProofDetail 
             id={viewId} 
@@ -110,7 +112,7 @@ function App() {
             {isLoadingProofs ? (
               <p className="text-center py-20 text-plum/50 font-serif italic">Loading proofs...</p>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                 <StageColumn 
                   title="Ed's Stage" 
                   proofs={proofs?.filter(p => p.current_stage === 'ed') || []} 
@@ -120,6 +122,18 @@ function App() {
                 <StageColumn 
                   title="Diane's Stage" 
                   proofs={proofs?.filter(p => p.current_stage === 'diane') || []} 
+                  onView={setViewId}
+                  color="plum"
+                />
+                <StageColumn 
+                  title="Sara's Stage" 
+                  proofs={proofs?.filter(p => p.current_stage === 'sara') || []} 
+                  onView={setViewId}
+                  color="plum"
+                />
+                <StageColumn 
+                  title="Greta's Stage" 
+                  proofs={proofs?.filter(p => p.current_stage === 'greta') || []} 
                   onView={setViewId}
                   color="plum"
                 />
@@ -140,27 +154,30 @@ function App() {
 
 function StageColumn({ title, proofs, onView, color }: { title: string, proofs: Proof[], onView: (id: string) => void, color: string }) {
   return (
-    <div className="bg-white/40 backdrop-blur-sm border border-plum/10 rounded-xl p-6 shadow-sm flex flex-col h-full">
-      <h3 className="font-serif text-2xl font-bold mb-6 text-plum border-b border-plum/20 pb-2">{title} <span className="text-base font-normal opacity-60">({proofs.length})</span></h3>
-      <div className="space-y-4 flex-grow">
+    <div className="bg-white/40 backdrop-blur-sm border border-plum/10 rounded-xl p-4 shadow-sm flex flex-col h-full">
+      <h3 className="font-serif text-xl font-bold mb-4 text-plum border-b border-plum/20 pb-2 flex justify-between items-center">
+        <span>{title}</span>
+        <span className="text-sm font-normal opacity-60">({proofs.length})</span>
+      </h3>
+      <div className="space-y-3 flex-grow">
         {proofs.map(proof => (
           <div 
             key={proof.id} 
             onClick={() => onView(proof.id)}
-            className="bg-white p-5 rounded-lg border border-plum/5 shadow-sm hover:shadow-md hover:border-plum/20 cursor-pointer transition-all flex justify-between items-center group"
+            className="bg-white p-4 rounded-lg border border-plum/5 shadow-sm hover:shadow-md hover:border-plum/20 cursor-pointer transition-all flex justify-between items-center group"
           >
-            <div>
-              <div className="font-bold text-gray-900 text-lg group-hover:text-plum transition-colors">{proof.book_title}</div>
-              <div className="text-xs text-gray-400 mt-1 uppercase tracking-widest font-semibold">
-                ID: {proof.id.slice(0, 8)}...
+            <div className="min-w-0 flex-1 mr-2">
+              <div className="font-bold text-gray-900 text-base group-hover:text-plum transition-colors truncate" title={proof.book_title}>{proof.book_title}</div>
+              <div className="text-[10px] text-gray-400 mt-1 uppercase tracking-widest font-semibold">
+                ID: {proof.id.slice(0, 6)}...
               </div>
             </div>
-            <ArrowRight size={20} className="text-plum/30 group-hover:text-plum group-hover:translate-x-1 transition-all" />
+            <ArrowRight size={16} className="text-plum/30 group-hover:text-plum group-hover:translate-x-1 transition-all flex-shrink-0" />
           </div>
         ))}
         {proofs.length === 0 && (
-          <div className="text-plum/30 text-sm text-center py-10 font-serif italic border-2 border-dashed border-plum/10 rounded-lg">
-            No items in this stage
+          <div className="text-plum/30 text-xs text-center py-8 font-serif italic border-2 border-dashed border-plum/10 rounded-lg">
+            No items
           </div>
         )}
       </div>
@@ -213,6 +230,8 @@ function ProofDetail({ id, user, onBack, onUpload }: { id: string, user: string,
             <div className="space-y-4">
               <DownloadLink id={id} type="original" label="Original Manuscript" exists={proof.files.original} />
               <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />
+              <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />
+              <DownloadLink id={id} type="sara" label="Sara's Edited Version" exists={proof.files.sara} />
               <DownloadLink id={id} type="done" label="Final Version (.done)" exists={proof.files.done} />
             </div>
           </div>
@@ -235,7 +254,7 @@ function ProofDetail({ id, user, onBack, onUpload }: { id: string, user: string,
                 <div className="mb-8 p-4 bg-paper/30 rounded-lg border border-plum/5">
                   <span className="text-xs font-black text-plum/50 uppercase tracking-widest mb-1 block">Status:</span>
                   <div className="font-bold text-plum text-xl flex items-center gap-2 uppercase tracking-tight">
-                    Review Required by <span className="underline decoration-plum/30 underline-offset-4">{proof.current_stage}</span>
+                    Review Required by <span className="underline decoration-plum/30 underline-offset-4 capitalize">{proof.current_stage}</span>
                   </div>
                 </div>
 
@@ -275,7 +294,7 @@ function ProofDetail({ id, user, onBack, onUpload }: { id: string, user: string,
                   <div className="text-center py-10 px-6 border border-plum/10 rounded-xl bg-paper/5">
                     <Clock size={40} className="mx-auto text-plum/20 mb-4" />
                     <p className="text-plum/60 font-serif italic text-lg leading-relaxed">
-                      You are in view-only mode. Waiting for <span className="font-bold not-italic">{proof.current_stage}</span> to complete their review.
+                      You are in view-only mode. Waiting for <span className="font-bold not-italic capitalize">{proof.current_stage}</span> to complete their review.
                     </p>
                   </div>
                 )}

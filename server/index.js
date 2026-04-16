@@ -23,8 +23,11 @@ app.use(express.json());
 const USER_MAP = {
   [process.env.ED_EMAIL]: "ed",
   [process.env.DIANE_EMAIL]: "diane",
+  [process.env.SARA_EMAIL]: "sara",
+  [process.env.GRETA_EMAIL]: "greta",
   "masarikfamilymichael@gmail.com": "ed",
-  "plumfieldlivinglibrary@gmail.com": "diane",
+  "plumfieldlivinglibrary@gmail.com": "sara",
+  "masarikfamilymargaret@gmail.com": "greta",
 };
 
 // Middleware to extract user from header
@@ -50,6 +53,8 @@ app.get("/me", (req, res) => {
 // Helper to derive stage from filesystem
 const getStage = (id) => {
   if (fs.existsSync(path.join(PROOFS_DIR, `${id}.done.pdf`))) return "done";
+  if (fs.existsSync(path.join(PROOFS_DIR, `${id}.sara.pdf`))) return "greta";
+  if (fs.existsSync(path.join(PROOFS_DIR, `${id}.diane.pdf`))) return "sara";
   if (fs.existsSync(path.join(PROOFS_DIR, `${id}.ed.pdf`))) return "diane";
   return "ed";
 };
@@ -60,11 +65,13 @@ const syncDatabase = () => {
 
   const files = fs.readdirSync(PROOFS_DIR);
   // Rule: A proof is created ONLY from {id}.pdf
-  // Ignore .ed.pdf and .done.pdf for discovery
+  // Ignore .ed.pdf, .diane.pdf, .sara.pdf, and .done.pdf for discovery
   const pdfs = files.filter(
     (f) =>
       f.endsWith(".pdf") &&
       !f.endsWith(".ed.pdf") &&
+      !f.endsWith(".diane.pdf") &&
+      !f.endsWith(".sara.pdf") &&
       !f.endsWith(".done.pdf") &&
       f !== "database.sqlite",
   );
@@ -108,6 +115,8 @@ app.get("/proofs/:id", (req, res) => {
   const files = {
     original: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.pdf`)),
     ed: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.ed.pdf`)),
+    diane: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.diane.pdf`)),
+    sara: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.sara.pdf`)),
     done: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.done.pdf`)),
   };
 
@@ -130,7 +139,7 @@ const workflowUpload = multer({
 
 app.post("/proofs/:id/upload", workflowUpload.single("pdf"), (req, res) => {
   const user = getUser(req);
-  if (!["ed", "diane"].includes(user))
+  if (!["ed", "diane", "sara", "greta"].includes(user))
     return res.status(403).json({ error: "Invalid user" });
 
   const proof = db
@@ -162,6 +171,18 @@ app.post("/proofs/:id/upload", workflowUpload.single("pdf"), (req, res) => {
       fs.unlinkSync(tempPath);
       return res.status(400).json({ error: "Only allowed at Diane stage" });
     }
+    finalFilename = `${proof.id}.diane.pdf`;
+  } else if (user === "sara") {
+    if (stage !== "sara") {
+      fs.unlinkSync(tempPath);
+      return res.status(400).json({ error: "Only allowed at Sara stage" });
+    }
+    finalFilename = `${proof.id}.sara.pdf`;
+  } else if (user === "greta") {
+    if (stage !== "greta") {
+      fs.unlinkSync(tempPath);
+      return res.status(400).json({ error: "Only allowed at Greta stage" });
+    }
     finalFilename = `${proof.id}.done.pdf`;
   }
 
@@ -185,7 +206,7 @@ app.get("/proofs/:id/download/:type", (req, res) => {
   const { id, type } = req.params;
   let filename = "";
   if (type === "original") filename = `${id}.pdf`;
-  else if (["ed", "done"].includes(type))
+  else if (["ed", "diane", "sara", "done"].includes(type))
     filename = `${id}.${type}.pdf`;
   else return res.status(400).json({ error: "Invalid file type" });
 
