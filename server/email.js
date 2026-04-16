@@ -1,4 +1,5 @@
 const USER_MAP = {
+  start: { email: process.env.ED_EMAIL, name: "ED" },
   ed: { email: process.env.DIANE_EMAIL, name: "Diane" },
   diane: { email: process.env.SARA_EMAIL, name: "Sara" },
   sara: { email: process.env.GRETA_EMAIL, name: "Greta" },

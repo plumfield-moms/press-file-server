@@ -6,7 +6,7 @@ const fs = require("fs");
 const os = require("os");
 const cors = require("cors");
 const { v4: uuidv4 } = require("uuid");
-
+const proofSync = require("./sync");
 const PROOFS_DIR = "/Users/jackmasarik/plumfield/plumfield publishing/proofs";
 
 // Ensure storage directory exists
@@ -260,4 +260,6 @@ if (fs.existsSync(clientDistPath)) {
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  proofSync();
+  setInterval(proofSync, 2000);
 });
