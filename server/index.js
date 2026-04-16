@@ -3,13 +3,25 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 const cors = require("cors");
 const { v4: uuidv4 } = require("uuid");
 
-const PROOFS_DIR = process.env.PROOFS_DIR;
+// Robust path resolution for PROOFS_DIR
+let proofsDir = process.env.PROOFS_DIR || "proofs";
+if (proofsDir.startsWith("~")) {
+  proofsDir = path.join(os.homedir(), proofsDir.slice(1));
+} else {
+  // If relative, resolve it relative to the project root (one level up from /server)
+  proofsDir = path.resolve(__dirname, "..", proofsDir);
+}
+
+const PROOFS_DIR = proofsDir;
+process.env.PROOFS_DIR = PROOFS_DIR; // Update env so db.js uses the same absolute path
 
 // Ensure storage directory exists
 if (!fs.existsSync(PROOFS_DIR)) {
+  console.log(`Creating directory: ${PROOFS_DIR}`);
   fs.mkdirSync(PROOFS_DIR, { recursive: true });
 }
 
