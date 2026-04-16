@@ -9,7 +9,7 @@ const db = require("./db");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const PROOFS_DIR = path.join(__dirname, "../proofs");
+const PROOFS_DIR = process.env.PROOFS_DIR;
 
 // Ensure storage directory exists
 if (!fs.existsSync(PROOFS_DIR)) {
@@ -95,12 +95,12 @@ app.get("/proofs", (req, res) => {
   const rows = db
     .prepare("SELECT * FROM proofs ORDER BY created_at DESC")
     .all();
-  
-  const proofs = rows.map(p => ({
+
+  const proofs = rows.map((p) => ({
     ...p,
-    current_stage: getStage(p.id)
+    current_stage: getStage(p.id),
   }));
-  
+
   res.json(proofs);
 });
 
@@ -120,10 +120,10 @@ app.get("/proofs/:id", (req, res) => {
     done: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.done.pdf`)),
   };
 
-  res.json({ 
-    ...proof, 
+  res.json({
+    ...proof,
     current_stage: getStage(proof.id),
-    files 
+    files,
   });
 });
 
@@ -195,8 +195,10 @@ app.post("/proofs/:id/upload", workflowUpload.single("pdf"), (req, res) => {
   fs.renameSync(tempPath, finalPath);
 
   // Update updated_at
-  db.prepare("UPDATE proofs SET updated_at = ? WHERE id = ?")
-    .run(Date.now(), proof.id);
+  db.prepare("UPDATE proofs SET updated_at = ? WHERE id = ?").run(
+    Date.now(),
+    proof.id,
+  );
 
   res.json({ message: "Upload successful", nextStage: getStage(proof.id) });
 });

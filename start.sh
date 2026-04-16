@@ -1,11 +1,25 @@
 #!/bin/bash
 
-# Load .env if it exists
+set -e
+
+# -----------------------------
+# Resolve repo root (LaunchAgent safe)
+# -----------------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# -----------------------------
+# Load environment variables safely
+# -----------------------------
 if [ -f server/.env ]; then
-  export $(cat server/.env | xargs)
+  set -a
+  source server/.env
+  set +a
 fi
 
-# Check for required env vars
+# -----------------------------
+# Required env vars
+# -----------------------------
 if [ -z "$TUNNEL_TOKEN" ]; then
   echo "Error: TUNNEL_TOKEN is not set in server/.env"
   exit 1
@@ -16,10 +30,45 @@ if [ -z "$ED_EMAIL" ] || [ -z "$DIANE_EMAIL" ]; then
   exit 1
 fi
 
+if [ -z "$PROOFS_DIR" ]; then
+  echo "Error: PROOFS_DIR is not set in server/.env"
+  exit 1
+fi
+
+# -----------------------------
+# Symlink / mount readiness check
+# -----------------------------
+# We wait for the proofs directory to exist (handles external drive + symlink cases)
+
+echo "Checking proofs directory availability: $PROOFS_DIR"
+
+ATTEMPTS=0
+MAX_ATTEMPTS=30
+
+while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+  if [ -d "$PROOFS_DIR" ]; then
+    echo "Proofs directory is available."
+    break
+  fi
+
+  echo "Waiting for proofs volume/symlink to become available... ($ATTEMPTS)"
+  sleep 2
+  ATTEMPTS=$((ATTEMPTS + 1))
+
+done
+
+if [ ! -d "$PROOFS_DIR" ]; then
+  echo "Error: PROOFS_DIR is not available after waiting: $PROOFS_DIR"
+  exit 1
+fi
+
+# -----------------------------
+# Start system
+# -----------------------------
+
 echo "Starting Plumfield Press Review System..."
 
-# Run everything concurrently
-# Note: We use 'cloudflared tunnel run' which requires TUNNEL_TOKEN
+# Run everything concurrently (LaunchAgent safe)
 pnpm concurrently \
   "pnpm run server" \
   "pnpm run client" \
