@@ -27,7 +27,7 @@ function proofSync() {
   let pdfs;
   try {
     files = fs.readdirSync(PROOFS_DIR);
-    const pdfs = files.filter(
+    pdfs = files.filter(
       (f) =>
         f.endsWith(".pdf") &&
         !f.endsWith(".ed.pdf") &&
