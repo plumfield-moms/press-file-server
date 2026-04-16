@@ -92,6 +92,7 @@ const syncDatabase = () => {
       f !== "database.sqlite",
   );
 
+  // Add new proofs to DB
   for (const file of pdfs) {
     const id = path.parse(file).name;
     const existing = db.prepare("SELECT * FROM proofs WHERE id = ?").get(id);
@@ -101,6 +102,15 @@ const syncDatabase = () => {
       db.prepare(
         "INSERT INTO proofs (id, book_title, created_at, updated_at) VALUES (?, ?, ?, ?)",
       ).run(id, id, now, now);
+    }
+  }
+
+  // Remove stale proofs from DB
+  const rows = db.prepare("SELECT id FROM proofs").all();
+  for (const row of rows) {
+    const pdfPath = path.join(PROOFS_DIR, `${row.id}.pdf`);
+    if (!fs.existsSync(pdfPath)) {
+      db.prepare("DELETE FROM proofs WHERE id = ?").run(row.id);
     }
   }
 };
