@@ -8,12 +8,6 @@ const db = require("./db");
 const PROOFS_DIR = process.env.PROOFS_DIR;
 const ED_EMAIL = process.env.ED_EMAIL;
 
-function isBasePdf(file) {
-  return (
-    file.endsWith(".pdf") && !file.includes(".ed.") && !file.includes(".done.")
-  );
-}
-
 function getId(file) {
   return file.replace(/\.pdf$/, "");
 }
@@ -32,6 +26,15 @@ function proofSync() {
   let files;
   try {
     files = fs.readdirSync(PROOFS_DIR);
+    const pdfs = files.filter(
+      (f) =>
+        f.endsWith(".pdf") &&
+        !f.endsWith(".ed.pdf") &&
+        !f.endsWith(".diane.pdf") &&
+        !f.endsWith(".sara.pdf") &&
+        !f.endsWith(".done.pdf") &&
+        f !== "database.sqlite",
+    );
   } catch (err) {
     console.error("Failed to read proofs directory:", err);
     return;
@@ -40,9 +43,7 @@ function proofSync() {
   // --- Discover current proofs from filesystem ---
   const discoveredIds = new Set();
 
-  for (const file of files) {
-    if (!isBasePdf(file)) continue;
-
+  for (const file of pdfs) {
     const id = getId(file);
     discoveredIds.add(id);
 

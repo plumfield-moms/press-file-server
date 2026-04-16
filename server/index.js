@@ -65,40 +65,8 @@ const getStage = (id) => {
   return "ed";
 };
 
-// Helper to sync DB with filesystem
-const syncDatabase = () => {
-  if (!fs.existsSync(PROOFS_DIR)) fs.mkdirSync(PROOFS_DIR);
-
-  const files = fs.readdirSync(PROOFS_DIR);
-  // Rule: A proof is created ONLY from {id}.pdf
-  // Ignore .ed.pdf, .diane.pdf, .sara.pdf, and .done.pdf for discovery
-  const pdfs = files.filter(
-    (f) =>
-      f.endsWith(".pdf") &&
-      !f.endsWith(".ed.pdf") &&
-      !f.endsWith(".diane.pdf") &&
-      !f.endsWith(".sara.pdf") &&
-      !f.endsWith(".done.pdf") &&
-      f !== "database.sqlite",
-  );
-
-  // Add new proofs to DB
-  for (const file of pdfs) {
-    const id = path.parse(file).name;
-    const existing = db.prepare("SELECT * FROM proofs WHERE id = ?").get(id);
-    if (!existing) {
-      const now = Date.now();
-      // Insert with only required fields
-      db.prepare(
-        "INSERT INTO proofs (id, book_title, created_at, updated_at) VALUES (?, ?, ?, ?)",
-      ).run(id, id, now, now);
-    }
-  }
-};
-
 // 2. GET /proofs - list all proofs (with sync)
 apiRouter.get("/proofs", (req, res) => {
-  syncDatabase();
   const rows = db
     .prepare("SELECT * FROM proofs ORDER BY created_at DESC")
     .all();
