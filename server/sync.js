@@ -18,7 +18,12 @@ function getId(file) {
   return file.replace(/\.pdf$/, "");
 }
 
-async function proofSync() {
+function sendEmailToEd(id) {
+  // Replace this with your real email implementation
+  emailer("start", id);
+}
+
+function proofSync() {
   if (!PROOFS_DIR) {
     console.error("PROOFS_DIR not set");
     return;
@@ -50,7 +55,16 @@ async function proofSync() {
       ).run(id, id, Date.now(), Date.now());
 
       // Notify Ed immediately
-      await emailer("start", id);
+      sendEmailToEd(id);
+    }
+  }
+
+  // --- Cleanup stale DB entries ---
+  const dbRows = db.prepare("SELECT id FROM proofs").all();
+
+  for (const row of dbRows) {
+    if (!discoveredIds.has(row.id)) {
+      db.prepare("DELETE FROM proofs WHERE id = ?").run(row.id);
     }
   }
 }
