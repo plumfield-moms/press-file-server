@@ -249,7 +249,7 @@ if (fs.existsSync(clientDistPath)) {
 
 // Wildcard route to serve index.html for client-side routing
 if (fs.existsSync(clientDistPath)) {
-  app.get("*", (req, res) => {
+  app.get("*path", (req, res) => {
     res.sendFile(path.join(clientDistPath, "index.html"));
   });
 }
