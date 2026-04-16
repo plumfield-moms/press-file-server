@@ -5,17 +5,19 @@ const path = require("path");
 const fs = require("fs");
 const cors = require("cors");
 const { v4: uuidv4 } = require("uuid");
+
+const PROOFS_DIR = process.env.PROOFS_DIR;
+
+// Ensure storage directory exists
+if (!fs.existsSync(PROOFS_DIR)) {
+  fs.mkdirSync(PROOFS_DIR, { recursive: true });
+}
+
 const db = require("./db");
 const emailer = require("./email");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const PROOFS_DIR = process.env.PROOFS_DIR;
-
-// Ensure storage directory exists
-if (!fs.existsSync(PROOFS_DIR)) {
-  fs.mkdirSync(PROOFS_DIR);
-}
 
 app.use(cors());
 app.use(express.json());
