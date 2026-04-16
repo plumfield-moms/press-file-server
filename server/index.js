@@ -7,17 +7,7 @@ const os = require("os");
 const cors = require("cors");
 const { v4: uuidv4 } = require("uuid");
 
-// Robust path resolution for PROOFS_DIR
-let proofsDir = process.env.PROOFS_DIR || "proofs";
-if (proofsDir.startsWith("~")) {
-  proofsDir = path.join(os.homedir(), proofsDir.slice(1));
-} else {
-  // If relative, resolve it relative to the project root (one level up from /server)
-  proofsDir = path.resolve(__dirname, "..", proofsDir);
-}
-
-const PROOFS_DIR = proofsDir;
-process.env.PROOFS_DIR = PROOFS_DIR; // Update env so db.js uses the same absolute path
+const PROOFS_DIR = "/Users/jackmasarik/plumfield/plumfield publishing/proofs";
 
 // Ensure storage directory exists
 if (!fs.existsSync(PROOFS_DIR)) {
@@ -163,74 +153,78 @@ const workflowUpload = multer({
   }),
 });
 
-apiRouter.post("/proofs/:id/upload", workflowUpload.single("pdf"), (req, res) => {
-  const user = getUser(req);
-  if (!["ed", "diane", "sara", "greta"].includes(user))
-    return res.status(403).json({ error: "Invalid user" });
+apiRouter.post(
+  "/proofs/:id/upload",
+  workflowUpload.single("pdf"),
+  (req, res) => {
+    const user = getUser(req);
+    if (!["ed", "diane", "sara", "greta"].includes(user))
+      return res.status(403).json({ error: "Invalid user" });
 
-  const proof = db
-    .prepare("SELECT * FROM proofs WHERE id = ?")
-    .get(req.params.id);
-  if (!proof) return res.status(404).json({ error: "Proof not found" });
+    const proof = db
+      .prepare("SELECT * FROM proofs WHERE id = ?")
+      .get(req.params.id);
+    if (!proof) return res.status(404).json({ error: "Proof not found" });
 
-  const stage = getStage(proof.id);
-  if (stage === "done") {
-    return res.status(400).json({ error: "Proof is already finalized" });
-  }
-
-  const originalPath = path.join(PROOFS_DIR, `${proof.id}.pdf`);
-  if (!fs.existsSync(originalPath)) {
-    return res.status(404).json({ error: "Original file missing" });
-  }
-
-  const tempPath = req.file.path;
-  let finalFilename = "";
-
-  if (user === "ed") {
-    if (stage !== "ed") {
-      fs.unlinkSync(tempPath);
-      return res.status(400).json({ error: "Only allowed at Ed stage" });
+    const stage = getStage(proof.id);
+    if (stage === "done") {
+      return res.status(400).json({ error: "Proof is already finalized" });
     }
-    finalFilename = `${proof.id}.ed.pdf`;
-    emailer("ed", proof.id);
-  } else if (user === "diane") {
-    if (stage !== "diane") {
-      fs.unlinkSync(tempPath);
-      return res.status(400).json({ error: "Only allowed at Diane stage" });
+
+    const originalPath = path.join(PROOFS_DIR, `${proof.id}.pdf`);
+    if (!fs.existsSync(originalPath)) {
+      return res.status(404).json({ error: "Original file missing" });
     }
-    finalFilename = `${proof.id}.diane.pdf`;
-    emailer("diane", proof.id);
-  } else if (user === "sara") {
-    if (stage !== "sara") {
-      fs.unlinkSync(tempPath);
-      return res.status(400).json({ error: "Only allowed at Sara stage" });
+
+    const tempPath = req.file.path;
+    let finalFilename = "";
+
+    if (user === "ed") {
+      if (stage !== "ed") {
+        fs.unlinkSync(tempPath);
+        return res.status(400).json({ error: "Only allowed at Ed stage" });
+      }
+      finalFilename = `${proof.id}.ed.pdf`;
+      emailer("ed", proof.id);
+    } else if (user === "diane") {
+      if (stage !== "diane") {
+        fs.unlinkSync(tempPath);
+        return res.status(400).json({ error: "Only allowed at Diane stage" });
+      }
+      finalFilename = `${proof.id}.diane.pdf`;
+      emailer("diane", proof.id);
+    } else if (user === "sara") {
+      if (stage !== "sara") {
+        fs.unlinkSync(tempPath);
+        return res.status(400).json({ error: "Only allowed at Sara stage" });
+      }
+      finalFilename = `${proof.id}.sara.pdf`;
+      emailer("sara", proof.id);
+    } else if (user === "greta") {
+      if (stage !== "greta") {
+        fs.unlinkSync(tempPath);
+        return res.status(400).json({ error: "Only allowed at Greta stage" });
+      }
+      finalFilename = `${proof.id}.done.pdf`;
     }
-    finalFilename = `${proof.id}.sara.pdf`;
-    emailer("sara", proof.id);
-  } else if (user === "greta") {
-    if (stage !== "greta") {
+
+    const finalPath = path.join(PROOFS_DIR, finalFilename);
+    if (fs.existsSync(finalPath)) {
       fs.unlinkSync(tempPath);
-      return res.status(400).json({ error: "Only allowed at Greta stage" });
+      return res.status(400).json({ error: "File already exists" });
     }
-    finalFilename = `${proof.id}.done.pdf`;
-  }
 
-  const finalPath = path.join(PROOFS_DIR, finalFilename);
-  if (fs.existsSync(finalPath)) {
-    fs.unlinkSync(tempPath);
-    return res.status(400).json({ error: "File already exists" });
-  }
+    fs.renameSync(tempPath, finalPath);
 
-  fs.renameSync(tempPath, finalPath);
+    // Update updated_at
+    db.prepare("UPDATE proofs SET updated_at = ? WHERE id = ?").run(
+      Date.now(),
+      proof.id,
+    );
 
-  // Update updated_at
-  db.prepare("UPDATE proofs SET updated_at = ? WHERE id = ?").run(
-    Date.now(),
-    proof.id,
-  );
-
-  res.json({ message: "Upload successful", nextStage: getStage(proof.id) });
-});
+    res.json({ message: "Upload successful", nextStage: getStage(proof.id) });
+  },
+);
 
 // 6. Download endpoint
 apiRouter.get("/proofs/:id/download/:type", (req, res) => {
