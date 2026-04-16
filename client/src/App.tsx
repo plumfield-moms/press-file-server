@@ -112,7 +112,7 @@ function App() {
             {isLoadingProofs ? (
               <p className="text-center py-20 text-plum/50 font-serif italic">Loading proofs...</p>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <StageColumn 
                   title="Ed's Stage" 
                   proofs={proofs?.filter(p => p.current_stage === 'ed') || []} 
