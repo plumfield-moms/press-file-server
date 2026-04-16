@@ -1,16 +1,16 @@
 const USER_MAP = {
-  ed: (process.env.DIANE_EMAIL, "Diane"),
-  diane: (process.env.SARA_EMAIL, "Sara"),
-  sara: (process.env.GRETA_EMAIL, "Greta"),
+  ed: { email: process.env.DIANE_EMAIL, name: "Diane" },
+  diane: { email: process.env.SARA_EMAIL, name: "Sara" },
+  sara: { email: process.env.GRETA_EMAIL, name: "Greta" },
 };
 
 function emailer(user, book) {
-  const email,
-    nextUser = USER_MAP[user];
-  if (email) {
-    const subject = `${nextUser}, ${book} is ready for you to proof!`;
-    const body = `<p>${nextUser},</p><p>${book} is ready for you to proof. Please visit <a href="https://server.plumfieldpress.com" target="_blank">https://server.plumfieldpress.com</a> to make your corrections</p>`;
-    console.log(subject, body);
+  const target = USER_MAP[user];
+  if (target && target.email) {
+    const { email, name } = target;
+    const subject = `${name}, ${book} is ready for you to proof!`;
+    const body = `<p>${name},</p><p>${book} is ready for you to proof. Please visit <a href="https://server.plumfieldpress.com" target="_blank">https://server.plumfieldpress.com</a> to make your corrections</p>`;
+    console.log(`Sending email to ${email}: ${subject}`);
     //TODO Connect mailgun
   }
 }
