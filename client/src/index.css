@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Playfair Display", serif;
+  --font-sans: "Assistant", sans-serif;
+  
+  --color-paper: #f9ddab;
+  --color-plum: #77183c;
+  --color-plum-light: #9e2a56;
+  --color-plum-dark: #5a122d;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-paper);
+  color: #2d2d2d;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+}
