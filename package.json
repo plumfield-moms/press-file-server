@@ -6,6 +6,8 @@
     "server": "cd server && node index.js",
     "client": "cd client && pnpm run dev",
     "dev": "concurrently \"pnpm run server\" \"pnpm run client\"",
+    "build": "cd client && pnpm run build",
+    "start": "cd server && node index.js",
     "install-all": "pnpm install && cd server && pnpm install && cd ../client && pnpm install"
   },
   "devDependencies": {

@@ -6,6 +6,7 @@ const fs = require("fs");
 const cors = require("cors");
 const { v4: uuidv4 } = require("uuid");
 const db = require("./db");
+const emailer = require("./email");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -18,6 +19,9 @@ if (!fs.existsSync(PROOFS_DIR)) {
 
 app.use(cors());
 app.use(express.json());
+
+// Create an API router
+const apiRouter = express.Router();
 
 // Mapping emails to internal user IDs
 const USER_MAP = {
@@ -37,7 +41,7 @@ const getUser = (req) => {
 };
 
 // Add endpoint to identify current user
-app.get("/me", (req, res) => {
+apiRouter.get("/me", (req, res) => {
   const user = getUser(req);
   if (!user) {
     const email =
@@ -88,7 +92,7 @@ const syncDatabase = () => {
 };
 
 // 2. GET /proofs - list all proofs (with sync)
-app.get("/proofs", (req, res) => {
+apiRouter.get("/proofs", (req, res) => {
   syncDatabase();
   const rows = db
     .prepare("SELECT * FROM proofs ORDER BY created_at DESC")
@@ -103,7 +107,7 @@ app.get("/proofs", (req, res) => {
 });
 
 // 3. GET /proofs/:id
-app.get("/proofs/:id", (req, res) => {
+apiRouter.get("/proofs/:id", (req, res) => {
   const proof = db
     .prepare("SELECT * FROM proofs WHERE id = ?")
     .get(req.params.id);
@@ -135,7 +139,7 @@ const workflowUpload = multer({
   }),
 });
 
-app.post("/proofs/:id/upload", workflowUpload.single("pdf"), (req, res) => {
+apiRouter.post("/proofs/:id/upload", workflowUpload.single("pdf"), (req, res) => {
   const user = getUser(req);
   if (!["ed", "diane", "sara", "greta"].includes(user))
     return res.status(403).json({ error: "Invalid user" });
@@ -164,18 +168,21 @@ app.post("/proofs/:id/upload", workflowUpload.single("pdf"), (req, res) => {
       return res.status(400).json({ error: "Only allowed at Ed stage" });
     }
     finalFilename = `${proof.id}.ed.pdf`;
+    emailer("ed", proof.id);
   } else if (user === "diane") {
     if (stage !== "diane") {
       fs.unlinkSync(tempPath);
       return res.status(400).json({ error: "Only allowed at Diane stage" });
     }
     finalFilename = `${proof.id}.diane.pdf`;
+    emailer("diane", proof.id);
   } else if (user === "sara") {
     if (stage !== "sara") {
       fs.unlinkSync(tempPath);
       return res.status(400).json({ error: "Only allowed at Sara stage" });
     }
     finalFilename = `${proof.id}.sara.pdf`;
+    emailer("sara", proof.id);
   } else if (user === "greta") {
     if (stage !== "greta") {
       fs.unlinkSync(tempPath);
@@ -202,7 +209,7 @@ app.post("/proofs/:id/upload", workflowUpload.single("pdf"), (req, res) => {
 });
 
 // 6. Download endpoint
-app.get("/proofs/:id/download/:type", (req, res) => {
+apiRouter.get("/proofs/:id/download/:type", (req, res) => {
   const { id, type } = req.params;
   let filename = "";
   if (type === "original") filename = `${id}.pdf`;
@@ -216,6 +223,22 @@ app.get("/proofs/:id/download/:type", (req, res) => {
 
   res.download(filePath, filename);
 });
+
+// Mount the API router
+app.use("/api", apiRouter);
+
+// Serve static files from the Vite build output directory
+const clientDistPath = path.join(__dirname, "../client/dist");
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+}
+
+// Wildcard route to serve index.html for client-side routing
+if (fs.existsSync(clientDistPath)) {
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(clientDistPath, "index.html"));
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
