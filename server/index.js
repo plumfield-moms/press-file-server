@@ -26,8 +26,6 @@ const USER_MAP = {
   [process.env.SARA_EMAIL]: "sara",
   [process.env.GRETA_EMAIL]: "greta",
   "masarikfamilymichael@gmail.com": "ed",
-  "plumfieldlivinglibrary@gmail.com": "sara",
-  "masarikfamilymargaret@gmail.com": "greta",
 };
 
 // Middleware to extract user from header
