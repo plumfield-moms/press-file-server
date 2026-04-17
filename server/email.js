@@ -1,3 +1,4 @@
+const nodemailer = require("nodemailer");
 const USER_MAP = {
   start: { email: process.env.ED_EMAIL, name: "Ed" },
   ed: { email: process.env.DIANE_EMAIL, name: "Diane" },
@@ -10,9 +11,29 @@ function emailer(user, book) {
   if (target && target.email) {
     const { email, name } = target;
     const subject = `${name}, ${book} is ready for you to proof!`;
-    const body = `<p>${name},</p><p>${book} is ready for you to proof. Please visit <a href="https://server.plumfieldpress.com" target="_blank">https://server.plumfieldpress.com</a> to make your corrections</p>`;
+    const body = `${name}, ${book} is ready for you to proof. Please visit https://server.plumfieldpress.com to make your corrections`;
     console.log(`Sending email to ${email}: ${subject}`);
-    //TODO Connect mailgun
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: "plumfieldmoms@gmail.com",
+        pass: process.env.GMAIL_PASSWORD, // NOT your regular password
+      },
+    });
+
+    const mailOptions = {
+      from: "plumfieldmoms@gmail.com",
+      to: "masarikfamilymichael@gmail.com", //to: email
+      subject: subject,
+      text: body,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        return console.log(error);
+      }
+      console.log("Email sent: " + info.response);
+    });
   }
 }
 module.exports = emailer;
