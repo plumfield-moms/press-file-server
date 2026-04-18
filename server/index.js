@@ -102,7 +102,7 @@ apiRouter.get("/proofs/:id", (req, res) => {
 // 5. POST /proofs/:id/upload
 const workflowUpload = multer({
   storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, PROOFS_DIR),
+    destination: (req, file, cb) => cb(null, os.tmpdir()),
     filename: (req, file, cb) => {
       cb(null, `temp-work-${uuidv4()}.pdf`);
     },
