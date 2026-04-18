@@ -179,11 +179,28 @@ apiRouter.post(
 // 6. Download endpoint
 apiRouter.get("/proofs/:id/download/:type", (req, res) => {
   const { id, type } = req.params;
+  const user = getUser(req);
+  const stage = getStage(id);
+
+  if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  // Access Control: Only allow downloading the file "ready" for the current user
+  let allowed = false;
+  if (user === "ed" && stage === "ed" && type === "original") allowed = true;
+  else if (user === "diane" && stage === "diane" && type === "ed")
+    allowed = true;
+  else if (user === "sara" && stage === "sara" && type === "diane")
+    allowed = true;
+
+  if (!allowed) {
+    return res.status(403).json({
+      error: "You do not have permission to download this file version",
+    });
+  }
+
   let filename = "";
   if (type === "original") filename = `${id}.pdf`;
-  else if (["ed", "diane", "sara", "done"].includes(type))
-    filename = `${id}.${type}.pdf`;
-  else return res.status(400).json({ error: "Invalid file type" });
+  else filename = `${id}.${type}.pdf`;
 
   const filePath = path.join(PROOFS_DIR, filename);
   if (!fs.existsSync(filePath))

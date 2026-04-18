@@ -220,12 +220,25 @@ function ProofDetail({ id, user, onBack, onUpload }: { id: string, user: string,
               <Download size={24} className="opacity-50" />
               Manuscript Files
             </h3>
-            <div className="space-y-4">
-              <DownloadLink id={id} type="original" label="Original Manuscript" exists={proof.files.original} />
-              <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />
-              <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />
-              <DownloadLink id={id} type="done" label="Final Version (.done)" exists={proof.files.done} />
-            </div>
+            {canUpload ? (
+              <div className="space-y-4">
+                {user === 'ed' && <DownloadLink id={id} type="original" label="Original Manuscript" exists={proof.files.original} />}
+                {user === 'diane' && <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />}
+                {user === 'sara' && <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />}
+                <p className="text-xs text-plum/60 italic font-serif mt-4">
+                  Download the file above to begin your review. Once finished, upload your revised version to the right.
+                </p>
+              </div>
+            ) : (
+              <div className="text-center py-10 px-6 border border-plum/10 rounded-xl bg-paper/5">
+                <Clock size={40} className="mx-auto text-plum/20 mb-4" />
+                <p className="text-plum/60 font-serif italic text-lg leading-relaxed">
+                  {proof.current_stage === 'done' 
+                    ? "This proof is finalized. Files are archived."
+                    : `Files will be available here when it is your stage (${user}).`}
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="bg-white/80 p-8 rounded-2xl border border-plum/10 shadow-sm">
