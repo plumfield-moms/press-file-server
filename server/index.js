@@ -7,7 +7,7 @@ const os = require("os");
 const cors = require("cors");
 const { v4: uuidv4 } = require("uuid");
 const proofSync = require("./sync");
-const PROOFS_DIR = "/Users/jackmasarik/plumfield/plumfield publishing/proofs";
+const PROOFS_DIR = process.env.PROOFS_DIR || "/Users/jackmasarik/plumfield/plumfield publishing/proofs";
 
 // Ensure storage directory exists
 if (!fs.existsSync(PROOFS_DIR)) {
@@ -32,7 +32,7 @@ const USER_MAP = {
   [process.env.ED_EMAIL]: "ed",
   [process.env.DIANE_EMAIL]: "diane",
   [process.env.SARA_EMAIL]: "sara",
-  "masarikfamilymichael@gmail.com": "diane",
+  "masarikfamilymichael@gmail.com": "ed",
 };
 
 // Middleware to extract user from header
@@ -155,7 +155,6 @@ apiRouter.post(
         return res.status(400).json({ error: "Only allowed at Sara stage" });
       }
       finalFilename = `${proof.id}.done.pdf`;
-      emailer("sara", proof.id);
     }
 
     const finalPath = path.join(PROOFS_DIR, finalFilename);
@@ -164,7 +163,14 @@ apiRouter.post(
       return res.status(400).json({ error: "File already exists" });
     }
 
-    fs.renameSync(tempPath, finalPath);
+    try {
+      fs.copyFileSync(tempPath, finalPath);
+      fs.unlinkSync(tempPath);
+    } catch (err) {
+      console.error("File move failed:", err);
+      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      return res.status(500).json({ error: "Failed to save file" });
+    }
 
     // Update updated_at
     db.prepare("UPDATE proofs SET updated_at = ? WHERE id = ?").run(
