@@ -32,7 +32,7 @@ async function GetProofs(
     );
   }
 
-  const response = await fetch("https://server.plumfieldpress.com/proofs", {
+  const response = await fetch("https://server.plumfieldpress.com/api/proofs", {
     headers: {
       "CF-Access-Client-Id": clientId,
       "CF-Access-Client-Secret": clientSecret,
@@ -44,7 +44,6 @@ async function GetProofs(
   if (!response.ok) {
     throw new Error(`Fetch failed with status ${response.status}`);
   }
-
   const data = (await response.json()) as DBData[];
 
   return data;
