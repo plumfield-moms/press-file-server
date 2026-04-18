@@ -26,14 +26,14 @@ A local-first, two-person editorial workflow system for book manuscripts.
 
 ## Workflow
 
-1. **Upload**: Create a new proof by uploading the original manuscript.
-2. **Ed's Review**: Ed claims the proof, uploads an edited version. Stage moves to `diane`.
-3. **Diane's Review**: Diane claims the proof, uploads her version. Stage moves to `done`.
-4. **Finalization**: The system automatically creates a `.done.pdf` version upon Diane's final upload.
+1. **Admin (Manual)**: Places `{id}.pdf` in the `/proofs` directory.
+2. **Ed's Review**: Ed downloads the manuscript and uploads `{id}.ed.pdf`. Stage moves to `diane`.
+3. **Diane's Review**: Diane downloads Ed's version and uploads `{id}.diane.pdf`. Stage moves to `sara`.
+4. **Sara's Review**: Sara downloads Diane's version and uploads `{id}.done.pdf`. Stage moves to `done`.
 
 ## Security
 
-In production, Cloudflare Zero Trust handles authentication and passes the identity via the `x-user` header. For local development, use the "Switch User" feature in the UI to simulate `ed` or `diane`.
+In production, Cloudflare Zero Trust handles authentication and passes the identity via the `cf-access-authenticated-user-email` header. The system maps authorized emails to specific internal roles (ed, diane, sara).
 
 ## Constraints Followed
 

@@ -6,13 +6,12 @@ import { Download, CheckCircle, Clock, ArrowRight, User } from 'lucide-react';
 type Proof = {
   id: string;
   book_title: string;
-  current_stage: 'ed' | 'diane' | 'sara' | 'greta' | 'done';
+  current_stage: 'ed' | 'diane' | 'sara' | 'done';
   created_at: number;
   files: {
     original: boolean;
     ed: boolean;
     diane: boolean;
-    sara: boolean;
     done: boolean;
   };
 };
@@ -28,7 +27,7 @@ function App() {
   const { data: me, isLoading: isLoadingMe, error: meError } = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
-      const res = await api.get<{ user: 'ed' | 'diane' | 'sara' | 'greta' }>('/me');
+      const res = await api.get<{ user: 'ed' | 'diane' | 'sara' }>('/me');
       return res.data;
     },
     retry: false,
@@ -132,12 +131,6 @@ function App() {
                   color="plum"
                 />
                 <StageColumn 
-                  title="Greta's Stage" 
-                  proofs={proofs?.filter(p => p.current_stage === 'greta') || []} 
-                  onView={setViewId}
-                  color="plum"
-                />
-                <StageColumn 
                   title="Done" 
                   proofs={proofs?.filter(p => p.current_stage === 'done') || []} 
                   onView={setViewId}
@@ -231,7 +224,6 @@ function ProofDetail({ id, user, onBack, onUpload }: { id: string, user: string,
               <DownloadLink id={id} type="original" label="Original Manuscript" exists={proof.files.original} />
               <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />
               <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />
-              <DownloadLink id={id} type="sara" label="Sara's Edited Version" exists={proof.files.sara} />
               <DownloadLink id={id} type="done" label="Final Version (.done)" exists={proof.files.done} />
             </div>
           </div>

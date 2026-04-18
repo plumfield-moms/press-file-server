@@ -10,15 +10,13 @@ The system is strictly driven by the presence of files in the `/proofs` director
 1.  **Admin (Manual):** Places `{id}.pdf`. This is the ONLY way a proof is created.
 2.  **Ed:** Downloads `{id}.pdf`, uploads revised file saved as `{id}.ed.pdf`.
 3.  **Diane:** Downloads `{id}.ed.pdf`, uploads revised file saved as `{id}.diane.pdf`.
-4.  **Sara:** Downloads `{id}.diane.pdf`, uploads revised file saved as `{id}.sara.pdf`.
-5.  **Greta:** Downloads `{id}.sara.pdf`, uploads revised file saved as `{id}.done.pdf`.
+4.  **Sara:** Downloads `{id}.diane.pdf`, uploads revised file saved as `{id}.done.pdf`.
 
 ### Critical Rules
-- **Final File:** Greta produces the final `{id}.done.pdf` directly.
+- **Final File:** Sara produces the final `{id}.done.pdf` directly.
 - **Discovery:** New proofs are detected ONLY from `{id}.pdf` files.
 - **Stage Derivation:** 
     - `{id}.done.pdf` exists → stage = "done"
-    - `{id}.sara.pdf` exists → stage = "greta"
     - `{id}.diane.pdf` exists → stage = "sara"
     - `{id}.ed.pdf` exists → stage = "diane"
     - Otherwise → stage = "ed"

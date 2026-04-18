@@ -32,7 +32,6 @@ function proofSync() {
         f.endsWith(".pdf") &&
         !f.endsWith(".ed.pdf") &&
         !f.endsWith(".diane.pdf") &&
-        !f.endsWith(".sara.pdf") &&
         !f.endsWith(".done.pdf") &&
         f !== "database.sqlite",
     );

@@ -25,8 +25,8 @@ if [ -z "$TUNNEL_TOKEN" ]; then
   exit 1
 fi
 
-if [ -z "$ED_EMAIL" ] || [ -z "$DIANE_EMAIL" ] || [ -z "$GRETA_EMAIL" ] || [ -z "$SARA_EMAIL"]; then
-  echo "Error: ED_EMAIL or DIANE_EMAIL is not set in server/.env"
+if [ -z "$ED_EMAIL" ] || [ -z "$DIANE_EMAIL" ] || [ -z "$SARA_EMAIL" ]; then
+  echo "Error: Missing required email environment variables in server/.env"
   exit 1
 fi
 
