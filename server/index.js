@@ -32,7 +32,7 @@ const USER_MAP = {
   [process.env.ED_EMAIL]: "ed",
   [process.env.DIANE_EMAIL]: "diane",
   [process.env.SARA_EMAIL]: "sara",
-  "masarikfamilymichael@gmail.com": "ed",
+  "masarikfamilymichael@gmail.com": "diane",
 };
 
 // Middleware to extract user from header
