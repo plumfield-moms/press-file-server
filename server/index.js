@@ -7,7 +7,9 @@ const os = require("os");
 const cors = require("cors");
 const { v4: uuidv4 } = require("uuid");
 const proofSync = require("./sync");
-const PROOFS_DIR = process.env.PROOFS_DIR || "/Users/jackmasarik/plumfield/plumfield publishing/proofs";
+const PROOFS_DIR =
+  process.env.PROOFS_DIR ||
+  "/Users/jackmasarik/plumfield/plumfield publishing/proofs";
 
 // Ensure storage directory exists
 if (!fs.existsSync(PROOFS_DIR)) {
@@ -32,7 +34,8 @@ const USER_MAP = {
   [process.env.ED_EMAIL]: "ed",
   [process.env.DIANE_EMAIL]: "diane",
   [process.env.SARA_EMAIL]: "sara",
-  "masarikfamilymichael@gmail.com": "ed",
+  "masarikfamilymichael@gmail.com": "viewer",
+  "tarpfarmer@gmail.com": "viewer",
 };
 
 // Middleware to extract user from header
@@ -190,13 +193,19 @@ apiRouter.get("/proofs/:id/download/:type", (req, res) => {
 
   if (!user) return res.status(401).json({ error: "Unauthorized" });
 
-  // Access Control: Only allow downloading the file "ready" for the current user
+  // Access Control:
+  // - "viewer" can download anything
+  // - Others only allow downloading the file "ready" for their stage
   let allowed = false;
-  if (user === "ed" && stage === "ed" && type === "original") allowed = true;
-  else if (user === "diane" && stage === "diane" && type === "ed")
+  if (user === "viewer") {
     allowed = true;
-  else if (user === "sara" && stage === "sara" && type === "diane")
+  } else if (user === "ed" && stage === "ed" && type === "original") {
     allowed = true;
+  } else if (user === "diane" && stage === "diane" && type === "ed") {
+    allowed = true;
+  } else if (user === "sara" && stage === "sara" && type === "diane") {
+    allowed = true;
+  }
 
   if (!allowed) {
     return res.status(403).json({

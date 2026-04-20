@@ -27,7 +27,7 @@ function App() {
   const { data: me, isLoading: isLoadingMe, error: meError } = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
-      const res = await api.get<{ user: 'ed' | 'diane' | 'sara' }>('/me');
+      const res = await api.get<{ user: 'ed' | 'diane' | 'sara' | 'viewer' }>('/me');
       return res.data;
     },
     retry: false,
@@ -220,7 +220,14 @@ function ProofDetail({ id, user, onBack, onUpload }: { id: string, user: string,
               <Download size={24} className="opacity-50" />
               Manuscript Files
             </h3>
-            {canUpload ? (
+            {user === 'viewer' ? (
+              <div className="space-y-4">
+                <DownloadLink id={id} type="original" label="Original Manuscript" exists={proof.files.original} />
+                <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />
+                <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />
+                <DownloadLink id={id} type="done" label="Final Version" exists={proof.files.done} />
+              </div>
+            ) : canUpload ? (
               <div className="space-y-4">
                 {user === 'ed' && <DownloadLink id={id} type="original" label="Original Manuscript" exists={proof.files.original} />}
                 {user === 'diane' && <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />}
@@ -297,9 +304,11 @@ function ProofDetail({ id, user, onBack, onUpload }: { id: string, user: string,
                   </div>
                 ) : (
                   <div className="text-center py-10 px-6 border border-plum/10 rounded-xl bg-paper/5">
-                    <Clock size={40} className="mx-auto text-plum/20 mb-4" />
+                    {user === 'viewer' ? <User size={40} className="mx-auto text-plum/20 mb-4" /> : <Clock size={40} className="mx-auto text-plum/20 mb-4" />}
                     <p className="text-plum/60 font-serif italic text-lg leading-relaxed">
-                      You are in view-only mode. Waiting for <span className="font-bold not-italic capitalize">{proof.current_stage}</span> to complete their review.
+                      {user === 'viewer' 
+                        ? "You have read-only access to this proof."
+                        : `You are in view-only mode. Waiting for ${proof.current_stage} to complete their review.`}
                     </p>
                   </div>
                 )}
