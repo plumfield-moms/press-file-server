@@ -22,7 +22,8 @@ function emailer(user, book) {
 
     const mailOptions = {
       from: "plumfieldmoms@gmail.com",
-      to: "masarikfamilymichael@gmail.com", //to: email
+      to: email, //to: email
+      cc: "tarpfarmer@gmail.com",
       subject: subject,
       text: body,
     };
