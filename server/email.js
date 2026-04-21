@@ -3,6 +3,7 @@ const USER_MAP = {
   start: { email: process.env.ED_EMAIL, name: "Ed" },
   ed: { email: process.env.DIANE_EMAIL, name: "Diane" },
   diane: { email: process.env.SARA_EMAIL, name: "Sara" },
+  sara: { email: "tarpfarmer@gmail.com", name: "Kristi" },
 };
 
 function emailer(user, book) {

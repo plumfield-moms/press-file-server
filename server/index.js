@@ -34,8 +34,8 @@ const USER_MAP = {
   [process.env.ED_EMAIL]: "ed",
   [process.env.DIANE_EMAIL]: "diane",
   [process.env.SARA_EMAIL]: "sara",
+  "tarpfarmer@gmail.com": "kristi",
   "masarikfamilymichael@gmail.com": "ed",
-  "tarpfarmer@gmail.com": "viewer",
 };
 
 // Middleware to extract user from header
@@ -61,6 +61,7 @@ apiRouter.get("/me", (req, res) => {
 // Helper to derive stage from filesystem
 const getStage = (id) => {
   if (fs.existsSync(path.join(PROOFS_DIR, `${id}.done.pdf`))) return "done";
+  if (fs.existsSync(path.join(PROOFS_DIR, `${id}.sara.pdf`))) return "kristi";
   if (fs.existsSync(path.join(PROOFS_DIR, `${id}.diane.pdf`))) return "sara";
   if (fs.existsSync(path.join(PROOFS_DIR, `${id}.ed.pdf`))) return "diane";
   return "ed";
@@ -93,6 +94,7 @@ apiRouter.get("/proofs/:id", (req, res) => {
     ed: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.ed.pdf`)),
     edDraft: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.ed.draft.pdf`)),
     diane: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.diane.pdf`)),
+    sara: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.sara.pdf`)),
     done: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.done.pdf`)),
     docx: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.docx`)),
   };
@@ -120,7 +122,7 @@ apiRouter.post(
   workflowUpload.single("pdf"),
   (req, res) => {
     const user = getUser(req);
-    if (!["ed", "diane", "sara"].includes(user))
+    if (!["ed", "diane", "sara", "kristi"].includes(user))
       return res.status(403).json({ error: "Invalid user" });
 
     const proof = db
@@ -159,6 +161,13 @@ apiRouter.post(
       if (stage !== "sara") {
         fs.unlinkSync(tempPath);
         return res.status(400).json({ error: "Only allowed at Sara stage" });
+      }
+      finalFilename = `${proof.id}.sara.pdf`;
+      emailer("sara", proof.id);
+    } else if (user === "kristi") {
+      if (stage !== "kristi") {
+        fs.unlinkSync(tempPath);
+        return res.status(400).json({ error: "Only allowed at Kristi stage" });
       }
       finalFilename = `${proof.id}.done.pdf`;
     }
@@ -270,6 +279,8 @@ apiRouter.get("/proofs/:id/download/:type", (req, res) => {
   } else if (user === "diane" && stage === "diane" && type === "ed") {
     allowed = true;
   } else if (user === "sara" && stage === "sara" && type === "diane") {
+    allowed = true;
+  } else if (user === "kristi" && stage === "kristi" && type === "sara") {
     allowed = true;
   }
 

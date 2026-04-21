@@ -6,13 +6,14 @@ import { Download, CheckCircle, Clock, ArrowRight, User, FileText } from 'lucide
 type Proof = {
   id: string;
   book_title: string;
-  current_stage: 'ed' | 'diane' | 'sara' | 'done';
+  current_stage: 'ed' | 'diane' | 'sara' | 'kristi' | 'done';
   created_at: number;
   files: {
     original: boolean;
     ed: boolean;
     edDraft?: boolean;
     diane: boolean;
+    sara: boolean;
     done: boolean;
     docx: boolean;
   };
@@ -29,7 +30,7 @@ function App() {
   const { data: me, isLoading: isLoadingMe, error: meError } = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
-      const res = await api.get<{ user: 'ed' | 'diane' | 'sara' | 'viewer' }>('/me');
+      const res = await api.get<{ user: 'ed' | 'diane' | 'sara' | 'kristi' | 'viewer' }>('/me');
       return res.data;
     },
     retry: false,
@@ -135,7 +136,7 @@ function App() {
             {isLoadingProofs ? (
               <p className="text-center py-20 text-plum/50 font-serif italic">Loading proofs...</p>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
                 <StageColumn 
                   title="Ed's Stage" 
                   proofs={proofs?.filter(p => p.current_stage === 'ed') || []} 
@@ -151,6 +152,12 @@ function App() {
                 <StageColumn 
                   title="Sara's Stage" 
                   proofs={proofs?.filter(p => p.current_stage === 'sara') || []} 
+                  onView={setViewId}
+                  color="plum"
+                />
+                <StageColumn 
+                  title="Kristi's Stage" 
+                  proofs={proofs?.filter(p => p.current_stage === 'kristi') || []} 
                   onView={setViewId}
                   color="plum"
                 />
@@ -252,6 +259,7 @@ function ProofDetail({ id, user, onBack, onUpload, onUploadDocx, onSubmit }: { i
                 <>
                   <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />
                   <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />
+                  <DownloadLink id={id} type="sara" label="Sara's Edited Version" exists={proof.files.sara} />
                   <DownloadLink id={id} type="done" label="Final Version" exists={proof.files.done} />
                 </>
               ) : (
@@ -259,6 +267,7 @@ function ProofDetail({ id, user, onBack, onUpload, onUploadDocx, onSubmit }: { i
                   {user === 'ed' && proof.files.edDraft && <DownloadLink id={id} type="edDraft" label="My Current Draft" exists={true} />}
                   {user === 'diane' && proof.current_stage === 'diane' && <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />}
                   {user === 'sara' && proof.current_stage === 'sara' && <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />}
+                  {user === 'kristi' && proof.current_stage === 'kristi' && <DownloadLink id={id} type="sara" label="Sara's Edited Version" exists={proof.files.sara} />}
                   
                   {!canUpload && proof.current_stage !== 'done' && (
                     <div className="text-center py-10 px-6 border border-plum/10 rounded-xl bg-paper/5">
@@ -272,6 +281,7 @@ function ProofDetail({ id, user, onBack, onUpload, onUploadDocx, onSubmit }: { i
                     <div className="space-y-4">
                       <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />
                       <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />
+                      <DownloadLink id={id} type="sara" label="Sara's Edited Version" exists={proof.files.sara} />
                       <DownloadLink id={id} type="done" label="Final Version" exists={proof.files.done} />
                     </div>
                   )}
