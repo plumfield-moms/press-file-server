@@ -91,6 +91,7 @@ apiRouter.get("/proofs/:id", (req, res) => {
   const files = {
     original: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.pdf`)),
     ed: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.ed.pdf`)),
+    edDraft: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.ed.draft.pdf`)),
     diane: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.diane.pdf`)),
     done: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.done.pdf`)),
     docx: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.docx`)),
@@ -145,8 +146,8 @@ apiRouter.post(
         fs.unlinkSync(tempPath);
         return res.status(400).json({ error: "Only allowed at Ed stage" });
       }
-      finalFilename = `${proof.id}.ed.pdf`;
-      emailer("ed", proof.id);
+      finalFilename = `${proof.id}.ed.draft.pdf`;
+      // No email for draft
     } else if (user === "diane") {
       if (stage !== "diane") {
         fs.unlinkSync(tempPath);
@@ -163,7 +164,8 @@ apiRouter.post(
     }
 
     const finalPath = path.join(PROOFS_DIR, finalFilename);
-    if (fs.existsSync(finalPath)) {
+    // Allow Ed to overwrite draft
+    if (user !== "ed" && fs.existsSync(finalPath)) {
       fs.unlinkSync(tempPath);
       return res.status(400).json({ error: "File already exists" });
     }
@@ -186,6 +188,36 @@ apiRouter.post(
     res.json({ message: "Upload successful", nextStage: getStage(proof.id) });
   },
 );
+
+// 5a. POST /proofs/:id/submit (Ed only)
+apiRouter.post("/proofs/:id/submit", (req, res) => {
+  const user = getUser(req);
+  if (user !== "ed") return res.status(403).json({ error: "Only Ed can submit" });
+
+  const { id } = req.params;
+  const draftPath = path.join(PROOFS_DIR, `${id}.ed.draft.pdf`);
+  const finalPath = path.join(PROOFS_DIR, `${id}.ed.pdf`);
+
+  if (!fs.existsSync(draftPath)) {
+    return res.status(400).json({ error: "No draft version found to submit" });
+  }
+
+  try {
+    fs.renameSync(draftPath, finalPath);
+    emailer("ed", id);
+    
+    // Update updated_at
+    db.prepare("UPDATE proofs SET updated_at = ? WHERE id = ?").run(
+      Date.now(),
+      id,
+    );
+
+    res.json({ message: "Submitted to Diane" });
+  } catch (err) {
+    console.error("Submit failed:", err);
+    res.status(500).json({ error: "Failed to submit version" });
+  }
+});
 
 // 5b. POST /proofs/:id/upload-docx
 apiRouter.post(
@@ -233,7 +265,7 @@ apiRouter.get("/proofs/:id/download/:type", (req, res) => {
   let allowed = false;
   if (user === "viewer" || type === "docx") {
     allowed = true;
-  } else if (user === "ed" && stage === "ed" && type === "original") {
+  } else if (user === "ed" && stage === "ed" && (type === "original" || type === "edDraft")) {
     allowed = true;
   } else if (user === "diane" && stage === "diane" && type === "ed") {
     allowed = true;
@@ -250,6 +282,7 @@ apiRouter.get("/proofs/:id/download/:type", (req, res) => {
   let filename = "";
   if (type === "original") filename = `${id}.pdf`;
   else if (type === "docx") filename = `${id}.docx`;
+  else if (type === "edDraft") filename = `${id}.ed.draft.pdf`;
   else filename = `${id}.${type}.pdf`;
 
   const filePath = path.join(PROOFS_DIR, filename);

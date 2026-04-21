@@ -11,6 +11,7 @@ type Proof = {
   files: {
     original: boolean;
     ed: boolean;
+    edDraft?: boolean;
     diane: boolean;
     done: boolean;
     docx: boolean;
@@ -46,6 +47,16 @@ function App() {
   const uploadVersionMutation = useMutation({
     mutationFn: async ({ id, formData }: { id: string; formData: FormData }) => {
       await api.post(`/proofs/${id}/upload`, formData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proofs'] });
+      queryClient.invalidateQueries({ queryKey: ['proof', viewId] });
+    },
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.post(`/proofs/${id}/submit`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proofs'] });
@@ -113,6 +124,7 @@ function App() {
             onBack={() => setViewId(null)} 
             onUpload={(formData) => uploadVersionMutation.mutate({ id: viewId, formData })}
             onUploadDocx={(formData) => uploadDocxMutation.mutate({ id: viewId, formData })}
+            onSubmit={() => submitMutation.mutate(viewId)}
           />
         ) : (
           <div>
@@ -190,7 +202,7 @@ function StageColumn({ title, proofs, onView, color }: { title: string, proofs: 
   );
 }
 
-function ProofDetail({ id, user, onBack, onUpload, onUploadDocx }: { id: string, user: string, onBack: () => void, onUpload: (f: FormData) => void, onUploadDocx: (f: FormData) => void }) {
+function ProofDetail({ id, user, onBack, onUpload, onUploadDocx, onSubmit }: { id: string, user: string, onBack: () => void, onUpload: (f: FormData) => void, onUploadDocx: (f: FormData) => void, onSubmit: () => void }) {
   const { data: proof, isLoading } = useQuery({
     queryKey: ['proof', id],
     queryFn: async () => {
@@ -244,7 +256,7 @@ function ProofDetail({ id, user, onBack, onUpload, onUploadDocx }: { id: string,
                 </>
               ) : (
                 <>
-                  {user === 'ed' && proof.current_stage === 'ed' && <DownloadLink id={id} type="original" label="Original Manuscript" exists={proof.files.original} />}
+                  {user === 'ed' && proof.files.edDraft && <DownloadLink id={id} type="edDraft" label="My Current Draft" exists={true} />}
                   {user === 'diane' && proof.current_stage === 'diane' && <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />}
                   {user === 'sara' && proof.current_stage === 'sara' && <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />}
                   
@@ -321,9 +333,27 @@ function ProofDetail({ id, user, onBack, onUpload, onUploadDocx }: { id: string,
                         </label>
                       </div>
                       <div className="bg-plum text-paper p-4 rounded-lg text-xs font-medium text-center italic opacity-80 shadow-inner">
-                        Uploading will automatically transition this proof to the next stage.
+                        {user === 'ed' 
+                          ? "Uploading will save a draft. You must click 'Submit to Diane' to finalize." 
+                          : "Uploading will automatically transition this proof to the next stage."}
                       </div>
                     </div>
+
+                    {/* Submit Button for Ed */}
+                    {user === 'ed' && proof.files.edDraft && (
+                      <div className="pt-4">
+                        <button 
+                          onClick={onSubmit}
+                          className="w-full py-4 bg-plum text-paper rounded-xl font-black uppercase tracking-widest hover:bg-plum-light transition-all shadow-lg flex items-center justify-center gap-3"
+                        >
+                          <CheckCircle size={20} />
+                          Submit to Diane
+                        </button>
+                        <p className="text-[10px] text-plum/50 text-center mt-2 font-bold uppercase tracking-tighter">
+                          This will notify Diane and move the proof to her stage.
+                        </p>
+                      </div>
+                    )}
 
                     {/* DOCX Upload for Ed */}
                     {user === 'ed' && (
