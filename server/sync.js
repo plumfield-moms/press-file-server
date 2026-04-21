@@ -31,6 +31,7 @@ function proofSync() {
       (f) =>
         f.endsWith(".pdf") &&
         !f.endsWith(".ed.pdf") &&
+        !f.endsWith(".ed.draft.pdf") &&
         !f.endsWith(".diane.pdf") &&
         !f.endsWith(".done.pdf") &&
         !f.startsWith("temp-work-") &&
