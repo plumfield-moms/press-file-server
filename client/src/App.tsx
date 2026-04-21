@@ -136,7 +136,7 @@ function App() {
             {isLoadingProofs ? (
               <p className="text-center py-20 text-plum/50 font-serif italic">Loading proofs...</p>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+              <div className="flex flex-wrap gap-6">
                 <StageColumn 
                   title="Ed's Stage" 
                   proofs={proofs?.filter(p => p.current_stage === 'ed') || []} 
@@ -178,7 +178,7 @@ function App() {
 
 function StageColumn({ title, proofs, onView, color }: { title: string, proofs: Proof[], onView: (id: string) => void, color: string }) {
   return (
-    <div className="bg-white/40 backdrop-blur-sm border border-plum/10 rounded-xl p-4 shadow-sm flex flex-col h-full">
+    <div className="w-[350px] bg-white/40 backdrop-blur-sm border border-plum/10 rounded-xl p-4 shadow-sm flex flex-col h-full shrink-0">
       <h3 className="font-serif text-xl font-bold mb-4 text-plum border-b border-plum/20 pb-2 flex justify-between items-center">
         <span>{title}</span>
         <span className="text-sm font-normal opacity-60">({proofs.length})</span>
