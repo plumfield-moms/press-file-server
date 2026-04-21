@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Download, CheckCircle, Clock, ArrowRight, User } from 'lucide-react';
+import { Download, CheckCircle, Clock, ArrowRight, User, FileText } from 'lucide-react';
 
 type Proof = {
   id: string;
@@ -13,6 +13,7 @@ type Proof = {
     ed: boolean;
     diane: boolean;
     done: boolean;
+    docx: boolean;
   };
 };
 
@@ -45,6 +46,16 @@ function App() {
   const uploadVersionMutation = useMutation({
     mutationFn: async ({ id, formData }: { id: string; formData: FormData }) => {
       await api.post(`/proofs/${id}/upload`, formData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proofs'] });
+      queryClient.invalidateQueries({ queryKey: ['proof', viewId] });
+    },
+  });
+
+  const uploadDocxMutation = useMutation({
+    mutationFn: async ({ id, formData }: { id: string; formData: FormData }) => {
+      await api.post(`/proofs/${id}/upload-docx`, formData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proofs'] });
@@ -101,6 +112,7 @@ function App() {
             user={user} 
             onBack={() => setViewId(null)} 
             onUpload={(formData) => uploadVersionMutation.mutate({ id: viewId, formData })}
+            onUploadDocx={(formData) => uploadDocxMutation.mutate({ id: viewId, formData })}
           />
         ) : (
           <div>
@@ -178,7 +190,7 @@ function StageColumn({ title, proofs, onView, color }: { title: string, proofs: 
   );
 }
 
-function ProofDetail({ id, user, onBack, onUpload }: { id: string, user: string, onBack: () => void, onUpload: (f: FormData) => void }) {
+function ProofDetail({ id, user, onBack, onUpload, onUploadDocx }: { id: string, user: string, onBack: () => void, onUpload: (f: FormData) => void, onUploadDocx: (f: FormData) => void }) {
   const { data: proof, isLoading } = useQuery({
     queryKey: ['proof', id],
     queryFn: async () => {
@@ -220,32 +232,40 @@ function ProofDetail({ id, user, onBack, onUpload }: { id: string, user: string,
               <Download size={24} className="opacity-50" />
               Manuscript Files
             </h3>
-            {user === 'viewer' ? (
-              <div className="space-y-4">
-                <DownloadLink id={id} type="original" label="Original Manuscript" exists={proof.files.original} />
-                <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />
-                <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />
-                <DownloadLink id={id} type="done" label="Final Version" exists={proof.files.done} />
-              </div>
-            ) : canUpload ? (
-              <div className="space-y-4">
-                {user === 'ed' && <DownloadLink id={id} type="original" label="Original Manuscript" exists={proof.files.original} />}
-                {user === 'diane' && <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />}
-                {user === 'sara' && <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />}
-                <p className="text-xs text-plum/60 italic font-serif mt-4">
-                  Download the file above to begin your review. Once finished, upload your revised version to the right.
-                </p>
-              </div>
-            ) : (
-              <div className="text-center py-10 px-6 border border-plum/10 rounded-xl bg-paper/5">
-                <Clock size={40} className="mx-auto text-plum/20 mb-4" />
-                <p className="text-plum/60 font-serif italic text-lg leading-relaxed">
-                  {proof.current_stage === 'done' 
-                    ? "This proof is finalized. Files are archived."
-                    : `Files will be available here when it is your stage (${user}).`}
-                </p>
-              </div>
-            )}
+            <div className="space-y-4">
+              <DownloadLink id={id} type="original" label="Original Manuscript" exists={proof.files.original} />
+              <DownloadLink id={id} type="docx" label="Editorial Notes (Word)" exists={proof.files.docx} isDocx />
+              
+              {user === 'viewer' ? (
+                <>
+                  <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />
+                  <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />
+                  <DownloadLink id={id} type="done" label="Final Version" exists={proof.files.done} />
+                </>
+              ) : (
+                <>
+                  {user === 'ed' && proof.current_stage === 'ed' && <DownloadLink id={id} type="original" label="Original Manuscript" exists={proof.files.original} />}
+                  {user === 'diane' && proof.current_stage === 'diane' && <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />}
+                  {user === 'sara' && proof.current_stage === 'sara' && <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />}
+                  
+                  {!canUpload && proof.current_stage !== 'done' && (
+                    <div className="text-center py-10 px-6 border border-plum/10 rounded-xl bg-paper/5">
+                      <Clock size={40} className="mx-auto text-plum/20 mb-4" />
+                      <p className="text-plum/60 font-serif italic text-lg leading-relaxed">
+                        Files will be available here when it is your stage ({user}).
+                      </p>
+                    </div>
+                  )}
+                  {proof.current_stage === 'done' && (
+                    <div className="space-y-4">
+                      <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />
+                      <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />
+                      <DownloadLink id={id} type="done" label="Final Version" exists={proof.files.done} />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           <div className="bg-white/80 p-8 rounded-2xl border border-plum/10 shadow-sm">
@@ -271,36 +291,69 @@ function ProofDetail({ id, user, onBack, onUpload }: { id: string, user: string,
                 </div>
 
                 {canUpload ? (
-                  <div className="space-y-4">
-                    <div className="relative group">
-                      <input 
-                        type="file" 
-                        accept=".pdf"
-                        id="file-upload"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const fd = new FormData();
-                            fd.append('pdf', file);
-                            onUpload(fd);
-                          }
-                        }}
-                        className="hidden"
-                      />
-                      <label 
-                        htmlFor="file-upload"
-                        className="flex flex-col items-center justify-center w-full py-10 px-4 bg-white border-2 border-dashed border-plum/20 rounded-xl cursor-pointer hover:bg-plum/5 hover:border-plum transition-all group"
-                      >
-                        <div className="bg-plum/10 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
-                          <ArrowRight className="text-plum rotate-90" size={24} />
+                  <div className="space-y-8">
+                    {/* PDF Upload */}
+                    <div className="space-y-4">
+                      <div className="relative group">
+                        <input 
+                          type="file" 
+                          accept=".pdf"
+                          id="file-upload"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const fd = new FormData();
+                              fd.append('pdf', file);
+                              onUpload(fd);
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        <label 
+                          htmlFor="file-upload"
+                          className="flex flex-col items-center justify-center w-full py-10 px-4 bg-white border-2 border-dashed border-plum/20 rounded-xl cursor-pointer hover:bg-plum/5 hover:border-plum transition-all group"
+                        >
+                          <div className="bg-plum/10 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                            <ArrowRight className="text-plum rotate-90" size={24} />
+                          </div>
+                          <span className="font-bold text-plum text-lg">Click to Upload Revised PDF</span>
+                          <span className="text-xs text-gray-400 mt-2 font-medium">Accepts .pdf files only</span>
+                        </label>
+                      </div>
+                      <div className="bg-plum text-paper p-4 rounded-lg text-xs font-medium text-center italic opacity-80 shadow-inner">
+                        Uploading will automatically transition this proof to the next stage.
+                      </div>
+                    </div>
+
+                    {/* DOCX Upload for Ed */}
+                    {user === 'ed' && (
+                      <div className="pt-6 border-t border-plum/10">
+                        <h4 className="text-sm font-black text-plum/60 uppercase tracking-widest mb-4">Editorial Notes (Optional)</h4>
+                        <div className="relative group">
+                          <input 
+                            type="file" 
+                            accept=".docx"
+                            id="docx-upload"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const fd = new FormData();
+                                fd.append('docx', file);
+                                onUploadDocx(fd);
+                              }
+                            }}
+                            className="hidden"
+                          />
+                          <label 
+                            htmlFor="docx-upload"
+                            className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-paper/20 border border-plum/20 rounded-xl cursor-pointer hover:bg-plum/5 hover:border-plum transition-all group"
+                          >
+                            <FileText className="text-plum/60 group-hover:text-plum" size={20} />
+                            <span className="font-bold text-plum/80 text-sm">{proof.files.docx ? 'Update Word Doc' : 'Upload Word Doc'}</span>
+                          </label>
                         </div>
-                        <span className="font-bold text-plum text-lg">Click to Upload Revised PDF</span>
-                        <span className="text-xs text-gray-400 mt-2 font-medium">Accepts .pdf files only</span>
-                      </label>
-                    </div>
-                    <div className="bg-plum text-paper p-4 rounded-lg text-xs font-medium text-center italic opacity-80 shadow-inner">
-                      Uploading will automatically transition this proof to the next stage.
-                    </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-10 px-6 border border-plum/10 rounded-xl bg-paper/5">
@@ -321,27 +374,31 @@ function ProofDetail({ id, user, onBack, onUpload }: { id: string, user: string,
   );
 }
 
-function DownloadLink({ id, type, label, exists }: { id: string, type: string, label: string, exists: boolean }) {
-  if (!exists) return (
-    <div className="flex items-center gap-4 p-5 bg-gray-50/50 rounded-xl border border-gray-100 text-gray-300">
-      <Download size={20} />
-      <span className="text-sm font-bold uppercase tracking-widest">{label} <span className="text-[10px] font-normal italic opacity-60 ml-2">(Pending)</span></span>
-    </div>
-  );
+function DownloadLink({ id, type, label, exists, isDocx }: { id: string, type: string, label: string, exists: boolean, isDocx?: boolean }) {
+  if (!exists) {
+    if (type === 'docx') return null; // Don't show pending for docx if it doesn't exist
+    
+    return (
+      <div className="flex items-center gap-4 p-5 bg-gray-50/50 rounded-xl border border-gray-100 text-gray-300">
+        <Download size={20} />
+        <span className="text-sm font-bold uppercase tracking-widest">{label} <span className="text-[10px] font-normal italic opacity-60 ml-2">(Pending)</span></span>
+      </div>
+    );
+  }
 
   return (
     <a 
       href={`/api/proofs/${id}/download/${type}`} 
-      className="flex items-center justify-between p-5 bg-white rounded-xl border border-plum/10 text-plum shadow-sm hover:shadow-md hover:border-plum transition-all group"
+      className={`flex items-center justify-between p-5 rounded-xl border transition-all group shadow-sm hover:shadow-md ${isDocx ? 'bg-blue-50/30 border-blue-100 text-blue-900 hover:border-blue-400' : 'bg-white border-plum/10 text-plum hover:border-plum'}`}
       download
     >
       <div className="flex items-center gap-4">
-        <div className="bg-plum/10 p-2 rounded-lg group-hover:bg-plum group-hover:text-paper transition-colors">
-          <Download size={20} />
+        <div className={`p-2 rounded-lg transition-colors ${isDocx ? 'bg-blue-100 group-hover:bg-blue-600 group-hover:text-white' : 'bg-plum/10 group-hover:bg-plum group-hover:text-paper'}`}>
+          {isDocx ? <FileText size={20} /> : <Download size={20} />}
         </div>
         <span className="text-base font-bold tracking-tight">{label}</span>
       </div>
-      <span className="text-[10px] font-black uppercase tracking-tighter opacity-30 group-hover:opacity-100 transition-opacity">Download PDF</span>
+      <span className="text-[10px] font-black uppercase tracking-tighter opacity-30 group-hover:opacity-100 transition-opacity">Download {isDocx ? 'DOCX' : 'PDF'}</span>
     </a>
   );
 }

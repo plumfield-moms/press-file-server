@@ -93,6 +93,7 @@ apiRouter.get("/proofs/:id", (req, res) => {
     ed: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.ed.pdf`)),
     diane: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.diane.pdf`)),
     done: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.done.pdf`)),
+    docx: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.docx`)),
   };
 
   res.json({
@@ -107,7 +108,8 @@ const workflowUpload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, os.tmpdir()),
     filename: (req, file, cb) => {
-      cb(null, `temp-work-${uuidv4()}.pdf`);
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, `temp-work-${uuidv4()}${ext}`);
     },
   }),
 });
@@ -185,6 +187,37 @@ apiRouter.post(
   },
 );
 
+// 5b. POST /proofs/:id/upload-docx
+apiRouter.post(
+  "/proofs/:id/upload-docx",
+  workflowUpload.single("docx"),
+  (req, res) => {
+    const user = getUser(req);
+    if (user !== "ed")
+      return res.status(403).json({ error: "Only Ed can upload docx files" });
+
+    const proof = db
+      .prepare("SELECT * FROM proofs WHERE id = ?")
+      .get(req.params.id);
+    if (!proof) return res.status(404).json({ error: "Proof not found" });
+
+    const tempPath = req.file.path;
+    const finalFilename = `${proof.id}.docx`;
+    const finalPath = path.join(PROOFS_DIR, finalFilename);
+
+    try {
+      fs.copyFileSync(tempPath, finalPath);
+      fs.unlinkSync(tempPath);
+    } catch (err) {
+      console.error("File move failed:", err);
+      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      return res.status(500).json({ error: "Failed to save file" });
+    }
+
+    res.json({ message: "Docx upload successful" });
+  },
+);
+
 // 6. Download endpoint
 apiRouter.get("/proofs/:id/download/:type", (req, res) => {
   const { id, type } = req.params;
@@ -195,9 +228,10 @@ apiRouter.get("/proofs/:id/download/:type", (req, res) => {
 
   // Access Control:
   // - "viewer" can download anything
+  // - docx can be downloaded by any authenticated user
   // - Others only allow downloading the file "ready" for their stage
   let allowed = false;
-  if (user === "viewer") {
+  if (user === "viewer" || type === "docx") {
     allowed = true;
   } else if (user === "ed" && stage === "ed" && type === "original") {
     allowed = true;
@@ -215,6 +249,7 @@ apiRouter.get("/proofs/:id/download/:type", (req, res) => {
 
   let filename = "";
   if (type === "original") filename = `${id}.pdf`;
+  else if (type === "docx") filename = `${id}.docx`;
   else filename = `${id}.${type}.pdf`;
 
   const filePath = path.join(PROOFS_DIR, filename);
