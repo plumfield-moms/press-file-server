@@ -6,7 +6,7 @@ import { Download, CheckCircle, Clock, ArrowRight, User, FileText } from 'lucide
 type Proof = {
   id: string;
   book_title: string;
-  current_stage: 'ed' | 'diane' | 'sara' | 'kristi' | 'done';
+  current_stage: 'ed' | 'diane' | 'sara' | 'kristi' | 'diane-2' | 'done';
   created_at: number;
   files: {
     original: boolean;
@@ -14,6 +14,7 @@ type Proof = {
     edDraft?: boolean;
     diane: boolean;
     sara: boolean;
+    kristi: boolean;
     done: boolean;
     docx: boolean;
   };
@@ -155,19 +156,24 @@ function App() {
                   onView={setViewId}
                   color="plum"
                 />
-                <StageColumn 
-                  title="Kristi's Stage" 
-                  proofs={proofs?.filter(p => p.current_stage === 'kristi') || []} 
+                <StageColumn
+                  title="Kristi's Stage"
+                  proofs={proofs?.filter(p => p.current_stage === 'kristi') || []}
                   onView={setViewId}
                   color="plum"
                 />
-                <StageColumn 
-                  title="Done" 
-                  proofs={proofs?.filter(p => p.current_stage === 'done') || []} 
+                <StageColumn
+                  title="Diane (2nd Pass)"
+                  proofs={proofs?.filter(p => p.current_stage === 'diane-2') || []}
                   onView={setViewId}
                   color="plum"
                 />
-              </div>
+                <StageColumn
+                  title="Done"
+                  proofs={proofs?.filter(p => p.current_stage === 'done') || []}
+                  onView={setViewId}
+                  color="plum"
+                />              </div>
             )}
           </div>
         )}
@@ -220,7 +226,7 @@ function ProofDetail({ id, user, onBack, onUpload, onUploadDocx, onSubmit }: { i
 
   if (isLoading || !proof) return <p className="text-center py-20 text-plum font-serif italic">Loading details...</p>;
 
-  const canUpload = proof.current_stage === user;
+  const canUpload = (proof.current_stage === user) || (user === 'diane' && proof.current_stage === 'diane-2');
 
   return (
     <div className="bg-white/60 backdrop-blur-md rounded-2xl shadow-xl border border-plum/10 overflow-hidden">
@@ -236,7 +242,7 @@ function ProofDetail({ id, user, onBack, onUpload, onUploadDocx, onSubmit }: { i
             <h2 className="text-5xl font-black text-plum mb-4 leading-tight">{proof.book_title}</h2>
             <div className="flex flex-wrap items-center gap-3">
               <span className="px-4 py-1.5 bg-plum text-paper rounded-full text-xs font-black uppercase tracking-widest">
-                Stage: {proof.current_stage}
+                Stage: {proof.current_stage === 'diane-2' ? "Diane (2nd Pass)" : proof.current_stage}
               </span>
               <span className="px-4 py-1.5 bg-white border border-plum/10 text-gray-500 rounded-full text-xs font-semibold uppercase tracking-widest">
                 Created {new Date(proof.created_at).toLocaleDateString()}
@@ -260,12 +266,14 @@ function ProofDetail({ id, user, onBack, onUpload, onUploadDocx, onSubmit }: { i
                   <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />
                   <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />
                   <DownloadLink id={id} type="sara" label="Sara's Edited Version" exists={proof.files.sara} />
+                  <DownloadLink id={id} type="kristi" label="Kristi's Edited Version" exists={proof.files.kristi} />
                   <DownloadLink id={id} type="done" label="Final Version" exists={proof.files.done} />
                 </>
               ) : (
                 <>
                   {user === 'ed' && proof.files.edDraft && <DownloadLink id={id} type="edDraft" label="My Current Draft" exists={true} />}
                   {user === 'diane' && proof.current_stage === 'diane' && <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />}
+                  {user === 'diane' && proof.current_stage === 'diane-2' && <DownloadLink id={id} type="kristi" label="Kristi's Edited Version" exists={proof.files.kristi} />}
                   {user === 'sara' && proof.current_stage === 'sara' && <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />}
                   {user === 'kristi' && proof.current_stage === 'kristi' && <DownloadLink id={id} type="sara" label="Sara's Edited Version" exists={proof.files.sara} />}
                   
@@ -282,6 +290,7 @@ function ProofDetail({ id, user, onBack, onUpload, onUploadDocx, onSubmit }: { i
                       <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />
                       <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />
                       <DownloadLink id={id} type="sara" label="Sara's Edited Version" exists={proof.files.sara} />
+                      <DownloadLink id={id} type="kristi" label="Kristi's Edited Version" exists={proof.files.kristi} />
                       <DownloadLink id={id} type="done" label="Final Version" exists={proof.files.done} />
                     </div>
                   )}

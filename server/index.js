@@ -61,6 +61,7 @@ apiRouter.get("/me", (req, res) => {
 // Helper to derive stage from filesystem
 const getStage = (id) => {
   if (fs.existsSync(path.join(PROOFS_DIR, `${id}.done.pdf`))) return "done";
+  if (fs.existsSync(path.join(PROOFS_DIR, `${id}.kristi.pdf`))) return "diane-2";
   if (fs.existsSync(path.join(PROOFS_DIR, `${id}.sara.pdf`))) return "kristi";
   if (fs.existsSync(path.join(PROOFS_DIR, `${id}.diane.pdf`))) return "sara";
   if (fs.existsSync(path.join(PROOFS_DIR, `${id}.ed.pdf`))) return "diane";
@@ -95,6 +96,7 @@ apiRouter.get("/proofs/:id", (req, res) => {
     edDraft: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.ed.draft.pdf`)),
     diane: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.diane.pdf`)),
     sara: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.sara.pdf`)),
+    kristi: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.kristi.pdf`)),
     done: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.done.pdf`)),
     docx: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.docx`)),
   };
@@ -151,12 +153,16 @@ apiRouter.post(
       finalFilename = `${proof.id}.ed.draft.pdf`;
       // No email for draft
     } else if (user === "diane") {
-      if (stage !== "diane") {
+      if (stage === "diane") {
+        finalFilename = `${proof.id}.diane.pdf`;
+        emailer("diane", proof.id);
+      } else if (stage === "diane-2") {
+        finalFilename = `${proof.id}.done.pdf`;
+        emailer("diane-2", proof.id);
+      } else {
         fs.unlinkSync(tempPath);
         return res.status(400).json({ error: "Only allowed at Diane stage" });
       }
-      finalFilename = `${proof.id}.diane.pdf`;
-      emailer("diane", proof.id);
     } else if (user === "sara") {
       if (stage !== "sara") {
         fs.unlinkSync(tempPath);
@@ -169,7 +175,8 @@ apiRouter.post(
         fs.unlinkSync(tempPath);
         return res.status(400).json({ error: "Only allowed at Kristi stage" });
       }
-      finalFilename = `${proof.id}.done.pdf`;
+      finalFilename = `${proof.id}.kristi.pdf`;
+      emailer("kristi", proof.id);
     }
 
     const finalPath = path.join(PROOFS_DIR, finalFilename);
@@ -277,6 +284,8 @@ apiRouter.get("/proofs/:id/download/:type", (req, res) => {
   } else if (user === "ed" && stage === "ed" && (type === "original" || type === "edDraft")) {
     allowed = true;
   } else if (user === "diane" && stage === "diane" && type === "ed") {
+    allowed = true;
+  } else if (user === "diane" && stage === "diane-2" && type === "kristi") {
     allowed = true;
   } else if (user === "sara" && stage === "sara" && type === "diane") {
     allowed = true;

@@ -11,13 +11,15 @@ The system is strictly driven by the presence of files in the `/proofs` director
 2.  **Ed:** Downloads `{id}.pdf`, uploads revised file saved as `{id}.ed.pdf`.
 3.  **Diane:** Downloads `{id}.ed.pdf`, uploads revised file saved as `{id}.diane.pdf`.
 4.  **Sara:** Downloads `{id}.diane.pdf`, uploads revised file saved as `{id}.sara.pdf`.
-5.  **Kristi (tarpfarmer):** Downloads `{id}.sara.pdf`, uploads revised file saved as `{id}.done.pdf`.
+5.  **Kristi (tarpfarmer):** Downloads `{id}.sara.pdf`, uploads revised file saved as `{id}.kristi.pdf`.
+6.  **Diane (2nd Pass):** Downloads `{id}.kristi.pdf`, uploads revised file saved as `{id}.done.pdf`.
 
 ### Critical Rules
-- **Final File:** Kristi produces the final `{id}.done.pdf` directly.
+- **Final File:** Diane produces the final `{id}.done.pdf` during her 2nd pass.
 - **Discovery:** New proofs are detected ONLY from `{id}.pdf` files. Draft files (`{id}.ed.draft.pdf`) and revision files are explicitly ignored.
 - **Stage Derivation:** 
     - `{id}.done.pdf` exists → stage = "done"
+    - `{id}.kristi.pdf` exists → stage = "diane-2"
     - `{id}.sara.pdf` exists → stage = "kristi"
     - `{id}.diane.pdf` exists → stage = "sara"
     - `{id}.ed.pdf` exists → stage = "diane"
