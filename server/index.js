@@ -34,7 +34,7 @@ const USER_MAP = {
   [process.env.ED_EMAIL]: "ed",
   [process.env.DIANE_EMAIL]: "diane",
   [process.env.SARA_EMAIL]: "sara",
-  "masarikfamilymichael@gmail.com": "viewer",
+  "masarikfamilymichael@gmail.com": "ed",
   "tarpfarmer@gmail.com": "viewer",
 };
 
