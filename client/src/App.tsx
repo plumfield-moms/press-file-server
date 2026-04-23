@@ -129,6 +129,12 @@ function App() {
             <div className="bg-paper/10 px-4 py-1 rounded-full border border-paper/20">
               <span className="text-sm font-medium">Logged in as: <strong className="uppercase">{user}</strong></span>
             </div>
+            <button 
+              onClick={() => window.location.href = '/cdn-cgi/access/logout'}
+              className="text-xs font-bold uppercase tracking-widest opacity-60 hover:opacity-100 transition border border-paper/40 px-3 py-1 rounded hover:bg-paper/10"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </header>

@@ -27,6 +27,12 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Request logging middleware to track start of uploads
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
 // Create an API router
 const apiRouter = express.Router();
 
@@ -136,13 +142,19 @@ apiRouter.post(
       return res.status(403).json({ error: "Invalid user", email });
     }
 
+    if (!req.file) {
+      console.log("Upload failed: No file provided in request body.");
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
     const proof = db
       .prepare("SELECT * FROM proofs WHERE id = ?")
       .get(req.params.id);
     if (!proof) return res.status(404).json({ error: "Proof not found" });
 
     const stage = getStage(proof.id);
-    console.log(`User ${user} attempting upload for proof ${req.params.id} at stage ${stage}`);
+    console.log(`User ${user} attempting upload for proof ${req.params.id} at stage ${stage}. File size: ${req.file.size}`);
+    
     if (stage === "done") {
       return res.status(400).json({ error: "Proof is already finalized" });
     }
@@ -199,6 +211,7 @@ apiRouter.post(
     try {
       fs.copyFileSync(tempPath, finalPath);
       fs.unlinkSync(tempPath);
+      console.log(`Successfully saved ${finalFilename}`);
     } catch (err) {
       console.error("File move failed:", err);
       if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
@@ -258,6 +271,10 @@ apiRouter.post(
       .prepare("SELECT * FROM proofs WHERE id = ?")
       .get(req.params.id);
     if (!proof) return res.status(404).json({ error: "Proof not found" });
+
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
 
     const tempPath = req.file.path;
     const finalFilename = `${proof.id}.docx`;
@@ -365,13 +382,28 @@ if (fs.existsSync(clientDistPath)) {
 
 // Wildcard route to serve index.html for client-side routing
 if (fs.existsSync(clientDistPath)) {
-  app.get("*path", (req, res) => {
+  apiRouter.get("*path", (req, res) => {
     res.sendFile(path.join(clientDistPath, "index.html"));
   });
 }
 
-app.listen(PORT, () => {
+// Global error handler for uncaught errors
+app.use((err, req, res, next) => {
+  console.error("UNCAUGHT ERROR:", err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(err.status || 500).json({ 
+    error: err.message || "Internal Server Error",
+    code: err.code 
+  });
+});
+
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   proofSync();
   setInterval(proofSync, 2000);
 });
+
+// Increase timeout for huge files
+server.setTimeout(600000); // 10 minutes timeout
