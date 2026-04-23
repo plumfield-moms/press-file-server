@@ -53,7 +53,12 @@ function App() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proofs'] });
       queryClient.invalidateQueries({ queryKey: ['proof', viewId] });
+      alert('File uploaded successfully!');
     },
+    onError: (error: any) => {
+      console.error('Upload failed:', error);
+      alert(`Upload failed: ${error.response?.data?.error || error.message}`);
+    }
   });
 
   const submitMutation = useMutation({
@@ -63,7 +68,12 @@ function App() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proofs'] });
       queryClient.invalidateQueries({ queryKey: ['proof', viewId] });
+      alert('Submitted successfully!');
     },
+    onError: (error: any) => {
+      console.error('Submit failed:', error);
+      alert(`Submission failed: ${error.response?.data?.error || error.message}`);
+    }
   });
 
   const uploadDocxMutation = useMutation({
@@ -73,7 +83,12 @@ function App() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proofs'] });
       queryClient.invalidateQueries({ queryKey: ['proof', viewId] });
+      alert('Word document uploaded successfully!');
     },
+    onError: (error: any) => {
+      console.error('Docx upload failed:', error);
+      alert(`Docx upload failed: ${error.response?.data?.error || error.message}`);
+    }
   });
 
   if (isLoadingMe) {

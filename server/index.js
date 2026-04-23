@@ -32,9 +32,9 @@ const apiRouter = express.Router();
 
 // Mapping emails to internal user IDs
 const USER_MAP = {
-  [process.env.ED_EMAIL]: "ed",
-  [process.env.DIANE_EMAIL]: "diane",
-  [process.env.SARA_EMAIL]: "sara",
+  [process.env.ED_EMAIL?.toLowerCase()]: "ed",
+  [process.env.DIANE_EMAIL?.toLowerCase()]: "diane",
+  [process.env.SARA_EMAIL?.toLowerCase()]: "sara",
   "tarpfarmer@gmail.com": "kristi",
   "masarikfamilymichael@gmail.com": "ed",
 };
@@ -44,16 +44,20 @@ const getUser = (req) => {
   const email =
     req.headers["cf-access-authenticated-user-email"] ||
     req.headers["x-user-email"];
-  return USER_MAP[email] || null;
+  
+  if (!email) return null;
+  return USER_MAP[email.toLowerCase()] || null;
 };
 
 // Add endpoint to identify current user
 apiRouter.get("/me", (req, res) => {
   const user = getUser(req);
+  const email =
+    req.headers["cf-access-authenticated-user-email"] ||
+    req.headers["x-user-email"];
+    
   if (!user) {
-    const email =
-      req.headers["cf-access-authenticated-user-email"] ||
-      req.headers["x-user-email"];
+    console.log(`Unauthorized access attempt. Email: ${email}, Headers:`, req.headers);
     return res.status(401).json({ error: "Unauthorized", email });
   }
   res.json({ user });
@@ -125,8 +129,12 @@ apiRouter.post(
   workflowUpload.single("pdf"),
   (req, res) => {
     const user = getUser(req);
-    if (!["ed", "diane", "sara", "kristi"].includes(user))
-      return res.status(403).json({ error: "Invalid user" });
+    const email = req.headers["cf-access-authenticated-user-email"] || req.headers["x-user-email"];
+    
+    if (!["ed", "diane", "sara", "kristi"].includes(user)) {
+      console.log(`Upload forbidden for user: ${user}, email: ${email}`);
+      return res.status(403).json({ error: "Invalid user", email });
+    }
 
     const proof = db
       .prepare("SELECT * FROM proofs WHERE id = ?")
@@ -134,6 +142,7 @@ apiRouter.post(
     if (!proof) return res.status(404).json({ error: "Proof not found" });
 
     const stage = getStage(proof.id);
+    console.log(`User ${user} attempting upload for proof ${req.params.id} at stage ${stage}`);
     if (stage === "done") {
       return res.status(400).json({ error: "Proof is already finalized" });
     }
