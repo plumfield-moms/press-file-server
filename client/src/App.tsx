@@ -282,7 +282,7 @@ function ProofDetail({ id, user, onBack, onUpload, onUploadDocx, onSubmit }: { i
               )}
 
               {/* Prominent section for the version to be reviewed */}
-              {!isLoading && proof.current_stage !== 'done' && user === proof.current_stage && (
+              {!isLoading && proof.current_stage !== 'done' && (user === proof.current_stage || (user === 'diane' && proof.current_stage === 'diane-2')) && (
                 <div className="mt-8 p-6 bg-plum/5 border-2 border-plum/20 rounded-2xl">
                   <h4 className="text-sm font-black text-plum uppercase tracking-widest mb-4 flex items-center gap-2">
                     <ArrowRight size={16} /> Current Review Task
