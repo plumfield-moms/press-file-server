@@ -46,18 +46,33 @@ function App() {
     enabled: !!me,
   });
 
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+
   const uploadVersionMutation = useMutation({
     mutationFn: async ({ id, formData }: { id: string; formData: FormData }) => {
-      await api.post(`/proofs/${id}/upload`, formData);
+      setUploadProgress(0);
+      await api.post(`/proofs/${id}/upload`, formData, {
+        onUploadProgress: (progressEvent) => {
+          const progress = progressEvent.total 
+            ? Math.round((progressEvent.loaded * 100) / progressEvent.total) 
+            : null;
+          setUploadProgress(progress);
+        },
+        // Increase client-side timeout for huge files
+        timeout: 600000, 
+      });
     },
     onSuccess: () => {
+      setUploadProgress(null);
       queryClient.invalidateQueries({ queryKey: ['proofs'] });
       queryClient.invalidateQueries({ queryKey: ['proof', viewId] });
       alert('File uploaded successfully!');
     },
     onError: (error: any) => {
+      setUploadProgress(null);
       console.error('Upload failed:', error);
-      alert(`Upload failed: ${error.response?.data?.error || error.message}`);
+      const msg = error.response?.data?.error || error.message;
+      alert(`Upload Status: ${msg}\n\nNote: If this was a very large file, please refresh the page to see if it actually finished.`);
     }
   });
 
@@ -378,8 +393,27 @@ function ProofDetail({ id, user, onBack, onUpload, onUploadDocx, onSubmit }: { i
 
                 {canUpload ? (
                   <div className="space-y-8">
+                    {/* Upload Progress Bar */}
+                    {uploadProgress !== null && (
+                      <div className="bg-plum/5 p-6 rounded-2xl border-2 border-plum/10 animate-in fade-in slide-in-from-top-4 duration-300">
+                        <div className="flex justify-between items-end mb-3">
+                          <div>
+                            <div className="text-plum font-black uppercase tracking-widest text-xs mb-1">Upload in Progress</div>
+                            <div className="text-plum/60 text-sm font-medium italic">Please keep this window open...</div>
+                          </div>
+                          <div className="text-plum font-black text-2xl tracking-tighter">{uploadProgress}%</div>
+                        </div>
+                        <div className="w-full bg-paper/50 rounded-full h-4 overflow-hidden border border-plum/10 p-0.5 shadow-inner">
+                          <div 
+                            className="bg-plum h-full rounded-full transition-all duration-300 ease-out shadow-lg"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     {/* PDF Upload */}
-                    <div className="space-y-4">
+                    <div className={uploadProgress !== null ? 'opacity-40 pointer-events-none' : ''}>
                       <div className="relative group">
                         <input 
                           type="file" 
