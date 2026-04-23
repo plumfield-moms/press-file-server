@@ -163,6 +163,7 @@ function App() {
             onUpload={(formData) => uploadVersionMutation.mutate({ id: viewId, formData })}
             onUploadDocx={(formData) => uploadDocxMutation.mutate({ id: viewId, formData })}
             onSubmit={() => submitMutation.mutate(viewId)}
+            uploadProgress={uploadProgress}
           />
         ) : (
           <div>
@@ -251,7 +252,7 @@ function StageColumn({ title, proofs, onView, color }: { title: string, proofs: 
   );
 }
 
-function ProofDetail({ id, user, onBack, onUpload, onUploadDocx, onSubmit }: { id: string, user: string, onBack: () => void, onUpload: (f: FormData) => void, onUploadDocx: (f: FormData) => void, onSubmit: () => void }) {
+function ProofDetail({ id, user, onBack, onUpload, onUploadDocx, onSubmit, uploadProgress }: { id: string, user: string, onBack: () => void, onUpload: (f: FormData) => void, onUploadDocx: (f: FormData) => void, onSubmit: () => void, uploadProgress: number | null }) {
   const { data: proof, isLoading } = useQuery({
     queryKey: ['proof', id],
     queryFn: async () => {
