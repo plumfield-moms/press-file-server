@@ -27,18 +27,25 @@ function proofSync() {
   let pdfs;
   try {
     files = fs.readdirSync(PROOFS_DIR);
-    pdfs = files.filter(
-      (f) =>
-        f.endsWith(".pdf") &&
-        !f.endsWith(".ed.pdf") &&
-        !f.endsWith(".ed.draft.pdf") &&
-        !f.endsWith(".diane.pdf") &&
-        !f.endsWith(".sara.pdf") &&
-        !f.endsWith(".kristi.pdf") &&
-        !f.endsWith(".done.pdf") &&
-        !f.startsWith("temp-work-") &&
-        f !== "database.sqlite",
-    );
+    pdfs = files.filter((f) => {
+      const fullPath = path.join(PROOFS_DIR, f);
+      try {
+        const isFile = fs.statSync(fullPath).isFile();
+        return (
+          isFile &&
+          f.endsWith(".pdf") &&
+          !f.endsWith(".ed.pdf") &&
+          !f.endsWith(".ed.draft.pdf") &&
+          !f.endsWith(".diane.pdf") &&
+          !f.endsWith(".sara.pdf") &&
+          !f.endsWith(".kristi.pdf") &&
+          !f.endsWith(".done.pdf") &&
+          !f.startsWith("temp-work-")
+        );
+      } catch (e) {
+        return false;
+      }
+    });
   } catch (err) {
     console.error("Failed to read proofs directory:", err);
     return;
