@@ -258,35 +258,69 @@ function ProofDetail({ id, user, onBack, onUpload, onUploadDocx, onSubmit }: { i
               Manuscript Files
             </h3>
             <div className="space-y-4">
-              <DownloadLink id={id} type="original" label="Original Manuscript" exists={proof.files.original} />
+              {/* Only Ed and Viewer see the Original Manuscript */}
+              {(user === 'ed' || user === 'viewer') && (
+                <DownloadLink id={id} type="original" label="Original Manuscript" exists={proof.files.original} />
+              )}
+              
               <DownloadLink id={id} type="docx" label="Editorial Notes (Word)" exists={proof.files.docx} isDocx />
               
+              {proof.files.docx && proof.current_stage !== 'ed' && (
+                <a 
+                  href={`/api/proofs/${id}/extract-text`} 
+                  className="flex items-center justify-between p-5 rounded-xl border transition-all group shadow-sm hover:shadow-md bg-amber-50/30 border-amber-100 text-amber-900 hover:border-amber-400"
+                  download
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-amber-100 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                      <FileText size={20} />
+                    </div>
+                    <span className="text-base font-bold tracking-tight">Plain Text Notes</span>
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-tighter opacity-30 group-hover:opacity-100 transition-opacity">Download TXT</span>
+                </a>
+              )}
+
+              {/* Prominent section for the version to be reviewed */}
+              {!isLoading && proof.current_stage !== 'done' && user === proof.current_stage && (
+                <div className="mt-8 p-6 bg-plum/5 border-2 border-plum/20 rounded-2xl">
+                  <h4 className="text-sm font-black text-plum uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <ArrowRight size={16} /> Current Review Task
+                  </h4>
+                  {user === 'ed' && (
+                    <DownloadLink id={id} type="original" label="Download Original to Edit" exists={proof.files.original} />
+                  )}
+                  {user === 'diane' && proof.current_stage === 'diane' && (
+                    <DownloadLink id={id} type="ed" label="Download Ed's Version to Review" exists={proof.files.ed} />
+                  )}
+                  {user === 'sara' && proof.current_stage === 'sara' && (
+                    <DownloadLink id={id} type="diane" label="Download Diane's Version to Review" exists={proof.files.diane} />
+                  )}
+                  {user === 'kristi' && proof.current_stage === 'kristi' && (
+                    <DownloadLink id={id} type="sara" label="Download Sara's Version to Review" exists={proof.files.sara} />
+                  )}
+                  {user === 'diane' && proof.current_stage === 'diane-2' && (
+                    <DownloadLink id={id} type="kristi" label="Download Kristi's Version for Final Pass" exists={proof.files.kristi} />
+                  )}
+                </div>
+              )}
+
               {user === 'viewer' ? (
-                <>
+                <div className="space-y-4 pt-4 border-t border-plum/10">
+                  <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">Version History</h4>
                   <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />
                   <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />
                   <DownloadLink id={id} type="sara" label="Sara's Edited Version" exists={proof.files.sara} />
                   <DownloadLink id={id} type="kristi" label="Kristi's Edited Version" exists={proof.files.kristi} />
                   <DownloadLink id={id} type="done" label="Final Version" exists={proof.files.done} />
-                </>
+                </div>
               ) : (
-                <>
+                <div className="space-y-4 pt-4 border-t border-plum/10">
                   {user === 'ed' && proof.files.edDraft && <DownloadLink id={id} type="edDraft" label="My Current Draft" exists={true} />}
-                  {user === 'diane' && proof.current_stage === 'diane' && <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />}
-                  {user === 'diane' && proof.current_stage === 'diane-2' && <DownloadLink id={id} type="kristi" label="Kristi's Edited Version" exists={proof.files.kristi} />}
-                  {user === 'sara' && proof.current_stage === 'sara' && <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />}
-                  {user === 'kristi' && proof.current_stage === 'kristi' && <DownloadLink id={id} type="sara" label="Sara's Edited Version" exists={proof.files.sara} />}
                   
-                  {!canUpload && proof.current_stage !== 'done' && (
-                    <div className="text-center py-10 px-6 border border-plum/10 rounded-xl bg-paper/5">
-                      <Clock size={40} className="mx-auto text-plum/20 mb-4" />
-                      <p className="text-plum/60 font-serif italic text-lg leading-relaxed">
-                        Files will be available here when it is your stage ({user}).
-                      </p>
-                    </div>
-                  )}
                   {proof.current_stage === 'done' && (
                     <div className="space-y-4">
+                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">Finalized Files</h4>
                       <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />
                       <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />
                       <DownloadLink id={id} type="sara" label="Sara's Edited Version" exists={proof.files.sara} />
@@ -294,7 +328,7 @@ function ProofDetail({ id, user, onBack, onUpload, onUploadDocx, onSubmit }: { i
                       <DownloadLink id={id} type="done" label="Final Version" exists={proof.files.done} />
                     </div>
                   )}
-                </>
+                </div>
               )}
             </div>
           </div>

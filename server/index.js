@@ -7,6 +7,7 @@ const os = require("os");
 const cors = require("cors");
 const { v4: uuidv4 } = require("uuid");
 const proofSync = require("./sync");
+const mammoth = require("mammoth");
 const PROOFS_DIR =
   process.env.PROOFS_DIR ||
   "/Users/jackmasarik/plumfield/plumfield publishing/proofs";
@@ -266,6 +267,33 @@ apiRouter.post(
   },
 );
 
+// 5c. GET /proofs/:id/extract-text
+apiRouter.get("/proofs/:id/extract-text", async (req, res) => {
+  const { id } = req.params;
+  const user = getUser(req);
+  if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  const docxPath = path.join(PROOFS_DIR, `${id}.docx`);
+  if (!fs.existsSync(docxPath)) {
+    return res.status(404).json({ error: "Editorial notes (Word) not found" });
+  }
+
+  try {
+    const result = await mammoth.extractRawText({ path: docxPath });
+    const text = result.value;
+
+    res.setHeader("Content-Type", "text/plain");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${id}-notes.txt"`
+    );
+    res.send(text);
+  } catch (err) {
+    console.error("Text extraction failed:", err);
+    res.status(500).json({ error: "Failed to extract text from Word document" });
+  }
+});
+
 // 6. Download endpoint
 apiRouter.get("/proofs/:id/download/:type", (req, res) => {
   const { id, type } = req.params;
@@ -276,12 +304,15 @@ apiRouter.get("/proofs/:id/download/:type", (req, res) => {
 
   // Access Control:
   // - "viewer" can download anything
-  // - docx can be downloaded by any authenticated user
-  // - Others only allow downloading the file "ready" for their stage
+  // - docx can be downloaded by any authenticated user for reference
+  // - original can ONLY be downloaded by "ed" or "viewer"
+  // - Each stage downloads the most recent edited version assigned to them
   let allowed = false;
   if (user === "viewer" || type === "docx") {
     allowed = true;
-  } else if (user === "ed" && stage === "ed" && (type === "original" || type === "edDraft")) {
+  } else if (type === "original") {
+    allowed = (user === "ed");
+  } else if (user === "ed" && stage === "ed" && type === "edDraft") {
     allowed = true;
   } else if (user === "diane" && stage === "diane" && type === "ed") {
     allowed = true;
@@ -291,11 +322,13 @@ apiRouter.get("/proofs/:id/download/:type", (req, res) => {
     allowed = true;
   } else if (user === "kristi" && stage === "kristi" && type === "sara") {
     allowed = true;
+  } else if (stage === "done" && type === "done") {
+    allowed = true; // Everyone can download the final version when done
   }
 
   if (!allowed) {
     return res.status(403).json({
-      error: "You do not have permission to download this file version",
+      error: "You do not have permission to download this file version at this stage",
     });
   }
 
