@@ -114,22 +114,31 @@ const getStage = (id) => {
 
 // 2. GET /proofs - list all proofs (with optimized filesystem check)
 apiRouter.get("/proofs", async (req, res) => {
+  const reqId = uuidv4().slice(0, 8);
+  console.log(`[${reqId}] [/proofs] Request started`);
   try {
+    console.log(`[${reqId}] [/proofs] Querying database...`);
     const rows = db.prepare("SELECT * FROM proofs ORDER BY created_at DESC").all();
+    console.log(`[${reqId}] [/proofs] Database returned ${rows.length} rows`);
     
-    // Perform ONE readdir call for the entire request
+    console.log(`[${reqId}] [/proofs] Reading directory: ${PROOFS_DIR}`);
     const files = await fsPromises.readdir(PROOFS_DIR);
+    console.log(`[${reqId}] [/proofs] Found ${files.length} files in directory`);
+
     const fileSet = new Set(files);
 
+    console.log(`[${reqId}] [/proofs] Mapping stages for ${rows.length} items...`);
     const proofs = rows.map((p) => ({
       ...p,
       current_stage: getStageOptimized(p.id, fileSet),
     }));
 
+    console.log(`[${reqId}] [/proofs] Sending JSON response`);
     res.json(proofs);
+    console.log(`[${reqId}] [/proofs] Request completed successfully`);
   } catch (err) {
-    console.error("Failed to list proofs:", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error(`[${reqId}] [/proofs] Error:`, err);
+    res.status(500).json({ error: "Internal Server Error", details: err.message });
   }
 });
 
