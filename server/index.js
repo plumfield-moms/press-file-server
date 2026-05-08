@@ -377,12 +377,16 @@ app.use("/api", apiRouter);
 // Serve static files from the Vite build output directory
 const clientDistPath = path.join(__dirname, "../client/dist");
 if (fs.existsSync(clientDistPath)) {
+  console.log(`Serving static files from: ${clientDistPath}`);
   app.use(express.static(clientDistPath));
 }
 
 // Wildcard route to serve index.html for client-side routing
+// This should be on 'app', not 'apiRouter', to handle root and non-API paths
 if (fs.existsSync(clientDistPath)) {
-  apiRouter.get("*path", (req, res) => {
+  app.get("*", (req, res, next) => {
+    // If it's an API request that reached here, it's a 404
+    if (req.url.startsWith("/api")) return next();
     res.sendFile(path.join(clientDistPath, "index.html"));
   });
 }
@@ -401,8 +405,18 @@ app.use((err, req, res, next) => {
 
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  proofSync();
-  setInterval(proofSync, 2000);
+  
+  // Start the async sync process
+  const runSync = async () => {
+    try {
+      await proofSync();
+    } catch (err) {
+      console.error("Sync failed:", err);
+    }
+  };
+
+  runSync();
+  setInterval(runSync, 5000); // Increased to 5s to be safer
 });
 
 // Increase timeout for huge files
