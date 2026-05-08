@@ -384,7 +384,7 @@ if (fs.existsSync(clientDistPath)) {
 // Wildcard route to serve index.html for client-side routing
 // This should be on 'app', not 'apiRouter', to handle root and non-API paths
 if (fs.existsSync(clientDistPath)) {
-  app.get("(.*)", (req, res, next) => {
+  app.get("{*path}", (req, res, next) => {
     // If it's an API request that reached here, it's a 404
     if (req.url.startsWith("/api")) return next();
     res.sendFile(path.join(clientDistPath, "index.html"));
