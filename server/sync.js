@@ -39,36 +39,37 @@ async function proofSync() {
     }
 
     const discoveredIds = new Set();
+    const selectStmt = db.prepare("SELECT 1 FROM proofs WHERE id = ?");
+    const insertStmt = db.prepare(
+      `INSERT INTO proofs (id, book_title, created_at, updated_at)
+       VALUES (?, ?, ?, ?)`
+    );
+
+    // Process new files individually to avoid long-running transactions
+    for (const file of pdfs) {
+      const id = file.replace(/\.pdf$/, "");
+      discoveredIds.add(id);
+
+      const exists = selectStmt.get(id);
+      if (!exists) {
+        console.log(`[Sync] New proof discovered: ${id}`);
+        insertStmt.run(id, id, Date.now(), Date.now());
+        
+        // Note: emailer is async and won't block
+        emailer("start", id);
+      }
+    }
+
+    // Clean up stale proofs
+    const dbRows = db.prepare("SELECT id FROM proofs").all();
+    const deleteStmt = db.prepare("DELETE FROM proofs WHERE id = ?");
     
-    // Use a transaction for bulk database operations
-    const syncTransaction = db.transaction((pdfsToProcess) => {
-      for (const file of pdfsToProcess) {
-        const id = file.replace(/\.pdf$/, "");
-        discoveredIds.add(id);
-
-        const exists = db.prepare("SELECT 1 FROM proofs WHERE id = ?").get(id);
-        if (!exists) {
-          console.log(`[Sync] New proof discovered: ${id}`);
-          db.prepare(
-            `INSERT INTO proofs (id, book_title, created_at, updated_at)
-             VALUES (?, ?, ?, ?)`,
-          ).run(id, id, Date.now(), Date.now());
-          
-          // Note: emailer is async and outside the transaction to avoid blocking
-          emailer("start", id);
-        }
+    for (const row of dbRows) {
+      if (!discoveredIds.has(row.id)) {
+        console.log(`[Sync] Removing stale proof: ${row.id}`);
+        deleteStmt.run(row.id);
       }
-
-      const dbRows = db.prepare("SELECT id FROM proofs").all();
-      for (const row of dbRows) {
-        if (!discoveredIds.has(row.id)) {
-          console.log(`[Sync] Removing stale proof: ${row.id}`);
-          db.prepare("DELETE FROM proofs WHERE id = ?").run(row.id);
-        }
-      }
-    });
-
-    syncTransaction(pdfs);
+    }
 
     const duration = Date.now() - start;
     if (duration > 1000) {

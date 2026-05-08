@@ -50,9 +50,13 @@ const getUserRole = (email) => {
   if (!email) return null;
   const e = email.toLowerCase().trim();
   
-  if (e === process.env.ED_EMAIL?.toLowerCase().trim()) return "ed";
-  if (e === process.env.DIANE_EMAIL?.toLowerCase().trim()) return "diane";
-  if (e === process.env.SARA_EMAIL?.toLowerCase().trim()) return "sara";
+  const edEmail = (process.env.ED_EMAIL || "").toLowerCase().trim();
+  const dianeEmail = (process.env.DIANE_EMAIL || "").toLowerCase().trim();
+  const saraEmail = (process.env.SARA_EMAIL || "").toLowerCase().trim();
+
+  if (edEmail && e === edEmail) return "ed";
+  if (dianeEmail && e === dianeEmail) return "diane";
+  if (saraEmail && e === saraEmail) return "sara";
   if (e === "tarpfarmer@gmail.com") return "kristi";
   if (e === "masarikfamilymichael@gmail.com") return "ed";
   
