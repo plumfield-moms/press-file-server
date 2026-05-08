@@ -437,6 +437,16 @@ app.use((err, req, res, next) => {
   });
 });
 
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+  // Give the server a moment to log before exiting
+  setTimeout(() => process.exit(1), 100);
+});
+
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   
@@ -460,6 +470,10 @@ const server = app.listen(PORT, () => {
   };
 
   runSync();
+});
+
+server.on("error", (err) => {
+  console.error("Server Error:", err);
 });
 
 server.setTimeout(600000); // 10 minutes timeout
