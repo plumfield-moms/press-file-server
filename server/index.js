@@ -45,12 +45,22 @@ app.use((req, res, next) => {
 const apiRouter = express.Router();
 
 // Mapping emails to internal user IDs
-const USER_MAP = {
-  [process.env.ED_EMAIL?.toLowerCase()]: "ed",
-  [process.env.DIANE_EMAIL?.toLowerCase()]: "diane",
-  [process.env.SARA_EMAIL?.toLowerCase()]: "sara",
-  "tarpfarmer@gmail.com": "kristi",
-  "masarikfamilymichael@gmail.com": "ed",
+// We use a helper function to ensure case-insensitive matching and env availability
+const getUserRole = (email) => {
+  if (!email) return null;
+  const e = email.toLowerCase().trim();
+  
+  if (e === process.env.ED_EMAIL?.toLowerCase().trim()) return "ed";
+  if (e === process.env.DIANE_EMAIL?.toLowerCase().trim()) return "diane";
+  if (e === process.env.SARA_EMAIL?.toLowerCase().trim()) return "sara";
+  if (e === "tarpfarmer@gmail.com") return "kristi";
+  if (e === "masarikfamilymichael@gmail.com") return "ed";
+  
+  // Hardcoded viewers or fallback
+  const VIEWERS = ["michael@masarik.com", "jackmasarik@gmail.com"];
+  if (VIEWERS.includes(e)) return "viewer";
+  
+  return null;
 };
 
 // Middleware to extract user from header
@@ -59,20 +69,19 @@ const getUser = (req) => {
     req.headers["cf-access-authenticated-user-email"] ||
     req.headers["x-user-email"];
   
-  if (!email) return null;
-  const user = USER_MAP[email.toLowerCase()];
-  return user || null;
+  return getUserRole(email);
 };
 
 // Add endpoint to identify current user
 apiRouter.get("/me", (req, res) => {
-  const user = getUser(req);
   const email =
     req.headers["cf-access-authenticated-user-email"] ||
     req.headers["x-user-email"];
+  const user = getUserRole(email);
     
+  console.log(`[/me] Auth Check: Email="${email}", Role="${user}"`);
+
   if (!user) {
-    console.log(`Unauthorized access attempt. Email: ${email}`);
     return res.status(401).json({ error: "Unauthorized", email });
   }
   res.json({ user });
