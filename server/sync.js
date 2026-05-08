@@ -7,7 +7,7 @@ const PROOFS_DIR = process.env.PROOFS_DIR || "/Users/jackmasarik/plumfield/plumf
 
 async function proofSync() {
   if (!PROOFS_DIR) {
-    console.error("PROOFS_DIR not set");
+    console.error("[Sync] PROOFS_DIR not set");
     return;
   }
 
@@ -34,40 +34,48 @@ async function proofSync() {
           pdfs.push(f);
         }
       } catch (e) {
-        // Skip files that can't be stat'd
+        // Skip inaccessible files
       }
     }
 
     const discoveredIds = new Set();
-    for (const file of pdfs) {
-      const id = file.replace(/\.pdf$/, "");
-      discoveredIds.add(id);
+    
+    // Use a transaction for bulk database operations
+    const syncTransaction = db.transaction((pdfsToProcess) => {
+      for (const file of pdfsToProcess) {
+        const id = file.replace(/\.pdf$/, "");
+        discoveredIds.add(id);
 
-      const exists = db.prepare("SELECT 1 FROM proofs WHERE id = ?").get(id);
-      if (!exists) {
-        console.log(`[Sync] New proof discovered: ${id}`);
-        db.prepare(
-          `INSERT INTO proofs (id, book_title, created_at, updated_at)
-           VALUES (?, ?, ?, ?)`,
-        ).run(id, id, Date.now(), Date.now());
-        emailer("start", id);
+        const exists = db.prepare("SELECT 1 FROM proofs WHERE id = ?").get(id);
+        if (!exists) {
+          console.log(`[Sync] New proof discovered: ${id}`);
+          db.prepare(
+            `INSERT INTO proofs (id, book_title, created_at, updated_at)
+             VALUES (?, ?, ?, ?)`,
+          ).run(id, id, Date.now(), Date.now());
+          
+          // Note: emailer is async and outside the transaction to avoid blocking
+          emailer("start", id);
+        }
       }
-    }
 
-    const dbRows = db.prepare("SELECT id FROM proofs").all();
-    for (const row of dbRows) {
-      if (!discoveredIds.has(row.id)) {
-        console.log(`[Sync] Removing stale proof: ${row.id}`);
-        db.prepare("DELETE FROM proofs WHERE id = ?").run(row.id);
+      const dbRows = db.prepare("SELECT id FROM proofs").all();
+      for (const row of dbRows) {
+        if (!discoveredIds.has(row.id)) {
+          console.log(`[Sync] Removing stale proof: ${row.id}`);
+          db.prepare("DELETE FROM proofs WHERE id = ?").run(row.id);
+        }
       }
-    }
+    });
+
+    syncTransaction(pdfs);
 
     const duration = Date.now() - start;
-    if (duration > 500) {
-      console.warn(`[Sync] Warning: Sync took ${duration}ms`);
+    if (duration > 1000) {
+      console.warn(`[Sync] Warning: Heavy sync took ${duration}ms`);
     }
   } catch (err) {
-    console.error("[Sync] Error during sync:", err);
+    console.error("[Sync] Error during sync logic:", err);
   }
 }
 

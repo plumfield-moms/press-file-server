@@ -3,6 +3,7 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const fsPromises = require("fs").promises;
 const os = require("os");
 const cors = require("cors");
 const { v4: uuidv4 } = require("uuid");
@@ -27,8 +28,15 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Request logging middleware to track start of uploads
+// Request logging middleware
 app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    if (duration > 1000) {
+      console.warn(`[Slow Request] ${req.method} ${req.url} took ${duration}ms`);
+    }
+  });
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   next();
 });
@@ -52,7 +60,8 @@ const getUser = (req) => {
     req.headers["x-user-email"];
   
   if (!email) return null;
-  return USER_MAP[email.toLowerCase()] || null;
+  const user = USER_MAP[email.toLowerCase()];
+  return user || null;
 };
 
 // Add endpoint to identify current user
@@ -63,13 +72,24 @@ apiRouter.get("/me", (req, res) => {
     req.headers["x-user-email"];
     
   if (!user) {
-    console.log(`Unauthorized access attempt. Email: ${email}, Headers:`, req.headers);
+    console.log(`Unauthorized access attempt. Email: ${email}`);
     return res.status(401).json({ error: "Unauthorized", email });
   }
   res.json({ user });
 });
 
-// Helper to derive stage from filesystem
+// Optimized Stage Derivation
+// Accepts a Set of all filenames in PROOFS_DIR to avoid expensive syscalls in a loop
+const getStageOptimized = (id, fileSet) => {
+  if (fileSet.has(`${id}.done.pdf`)) return "done";
+  if (fileSet.has(`${id}.kristi.pdf`)) return "diane-2";
+  if (fileSet.has(`${id}.sara.pdf`)) return "kristi";
+  if (fileSet.has(`${id}.diane.pdf`)) return "sara";
+  if (fileSet.has(`${id}.ed.pdf`)) return "diane";
+  return "ed";
+};
+
+// Legacy single-check stage derivation
 const getStage = (id) => {
   if (fs.existsSync(path.join(PROOFS_DIR, `${id}.done.pdf`))) return "done";
   if (fs.existsSync(path.join(PROOFS_DIR, `${id}.kristi.pdf`))) return "diane-2";
@@ -79,45 +99,61 @@ const getStage = (id) => {
   return "ed";
 };
 
-// 2. GET /proofs - list all proofs (with sync)
-apiRouter.get("/proofs", (req, res) => {
-  const rows = db
-    .prepare("SELECT * FROM proofs ORDER BY created_at DESC")
-    .all();
+// 2. GET /proofs - list all proofs (with optimized filesystem check)
+apiRouter.get("/proofs", async (req, res) => {
+  try {
+    const rows = db.prepare("SELECT * FROM proofs ORDER BY created_at DESC").all();
+    
+    // Perform ONE readdir call for the entire request
+    const files = await fsPromises.readdir(PROOFS_DIR);
+    const fileSet = new Set(files);
 
-  const proofs = rows.map((p) => ({
-    ...p,
-    current_stage: getStage(p.id),
-  }));
+    const proofs = rows.map((p) => ({
+      ...p,
+      current_stage: getStageOptimized(p.id, fileSet),
+    }));
 
-  res.json(proofs);
+    res.json(proofs);
+  } catch (err) {
+    console.error("Failed to list proofs:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 // 3. GET /proofs/:id
-apiRouter.get("/proofs/:id", (req, res) => {
-  const proof = db
-    .prepare("SELECT * FROM proofs WHERE id = ?")
-    .get(req.params.id);
-  if (!proof) return res.status(404).json({ error: "Proof not found" });
+apiRouter.get("/proofs/:id", async (req, res) => {
+  try {
+    const proof = db
+      .prepare("SELECT * FROM proofs WHERE id = ?")
+      .get(req.params.id);
+    if (!proof) return res.status(404).json({ error: "Proof not found" });
 
-  // Add file availability info
-  const files = {
-    original: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.pdf`)),
-    ed: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.ed.pdf`)),
-    edDraft: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.ed.draft.pdf`)),
-    diane: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.diane.pdf`)),
-    sara: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.sara.pdf`)),
-    kristi: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.kristi.pdf`)),
-    done: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.done.pdf`)),
-    docx: fs.existsSync(path.join(PROOFS_DIR, `${proof.id}.docx`)),
-  };
+    const filesInDir = await fsPromises.readdir(PROOFS_DIR);
+    const fileSet = new Set(filesInDir);
 
-  res.json({
-    ...proof,
-    current_stage: getStage(proof.id),
-    files,
-  });
+    const files = {
+      original: fileSet.has(`${proof.id}.pdf`),
+      ed: fileSet.has(`${proof.id}.ed.pdf`),
+      edDraft: fileSet.has(`${proof.id}.ed.draft.pdf`),
+      diane: fileSet.has(`${proof.id}.diane.pdf`),
+      sara: fileSet.has(`${proof.id}.sara.pdf`),
+      kristi: fileSet.has(`${proof.id}.kristi.pdf`),
+      done: fileSet.has(`${proof.id}.done.pdf`),
+      docx: fileSet.has(`${proof.id}.docx`),
+    };
+
+    res.json({
+      ...proof,
+      current_stage: getStageOptimized(proof.id, fileSet),
+      files,
+    });
+  } catch (err) {
+    console.error(`Failed to get proof ${req.params.id}:`, err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
+
+// ... rest of the upload and other routes remain similar, but ensure we use getUser correctly ...
 
 // 5. POST /proofs/:id/upload
 const workflowUpload = multer({
@@ -173,7 +209,6 @@ apiRouter.post(
         return res.status(400).json({ error: "Only allowed at Ed stage" });
       }
       finalFilename = `${proof.id}.ed.draft.pdf`;
-      // No email for draft
     } else if (user === "diane") {
       if (stage === "diane") {
         finalFilename = `${proof.id}.diane.pdf`;
@@ -202,7 +237,6 @@ apiRouter.post(
     }
 
     const finalPath = path.join(PROOFS_DIR, finalFilename);
-    // Allow Ed to overwrite draft
     if (user !== "ed" && fs.existsSync(finalPath)) {
       fs.unlinkSync(tempPath);
       return res.status(400).json({ error: "File already exists" });
@@ -218,7 +252,6 @@ apiRouter.post(
       return res.status(500).json({ error: "Failed to save file" });
     }
 
-    // Update updated_at
     db.prepare("UPDATE proofs SET updated_at = ? WHERE id = ?").run(
       Date.now(),
       proof.id,
@@ -244,13 +277,10 @@ apiRouter.post("/proofs/:id/submit", (req, res) => {
   try {
     fs.renameSync(draftPath, finalPath);
     emailer("ed", id);
-    
-    // Update updated_at
     db.prepare("UPDATE proofs SET updated_at = ? WHERE id = ?").run(
       Date.now(),
       id,
     );
-
     res.json({ message: "Submitted to Diane" });
   } catch (err) {
     console.error("Submit failed:", err);
@@ -258,7 +288,8 @@ apiRouter.post("/proofs/:id/submit", (req, res) => {
   }
 });
 
-// 5b. POST /proofs/:id/upload-docx
+// ...Docx routes...
+
 apiRouter.post(
   "/proofs/:id/upload-docx",
   workflowUpload.single("docx"),
@@ -293,7 +324,6 @@ apiRouter.post(
   },
 );
 
-// 5c. GET /proofs/:id/extract-text
 apiRouter.get("/proofs/:id/extract-text", async (req, res) => {
   const { id } = req.params;
   const user = getUser(req);
@@ -321,18 +351,13 @@ apiRouter.get("/proofs/:id/extract-text", async (req, res) => {
 });
 
 // 6. Download endpoint
-apiRouter.get("/proofs/:id/download/:type", (req, res) => {
+apiRouter.get("/proofs/:id/download/:type", async (req, res) => {
   const { id, type } = req.params;
   const user = getUser(req);
   const stage = getStage(id);
 
   if (!user) return res.status(401).json({ error: "Unauthorized" });
 
-  // Access Control:
-  // - "viewer" can download anything
-  // - docx can be downloaded by any authenticated user for reference
-  // - original can ONLY be downloaded by "ed" or "viewer"
-  // - Each stage downloads the most recent edited version assigned to them
   let allowed = false;
   if (user === "viewer" || type === "docx") {
     allowed = true;
@@ -349,7 +374,7 @@ apiRouter.get("/proofs/:id/download/:type", (req, res) => {
   } else if (user === "kristi" && stage === "kristi" && type === "sara") {
     allowed = true;
   } else if (stage === "done" && type === "done") {
-    allowed = true; // Everyone can download the final version when done
+    allowed = true;
   }
 
   if (!allowed) {
@@ -381,17 +406,14 @@ if (fs.existsSync(clientDistPath)) {
   app.use(express.static(clientDistPath));
 }
 
-// Wildcard route to serve index.html for client-side routing
-// This should be on 'app', not 'apiRouter', to handle root and non-API paths
 if (fs.existsSync(clientDistPath)) {
   app.get("{*path}", (req, res, next) => {
-    // If it's an API request that reached here, it's a 404
     if (req.url.startsWith("/api")) return next();
     res.sendFile(path.join(clientDistPath, "index.html"));
   });
 }
 
-// Global error handler for uncaught errors
+// Global error handler
 app.use((err, req, res, next) => {
   console.error("UNCAUGHT ERROR:", err);
   if (res.headersSent) {
@@ -399,25 +421,32 @@ app.use((err, req, res, next) => {
   }
   res.status(err.status || 500).json({ 
     error: err.message || "Internal Server Error",
-    code: err.code 
   });
 });
 
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   
-  // Start the async sync process
+  // Robust Async Sync Runner
+  let isSyncing = false;
   const runSync = async () => {
+    if (isSyncing) return;
+    isSyncing = true;
     try {
+      const syncStart = Date.now();
       await proofSync();
+      const syncDuration = Date.now() - syncStart;
+      if (syncDuration > 1000) console.log(`[Sync] Completed in ${syncDuration}ms`);
     } catch (err) {
-      console.error("Sync failed:", err);
+      console.error("[Sync] Failed:", err);
+    } finally {
+      isSyncing = false;
+      // Schedule next run
+      setTimeout(runSync, 10000); // Wait 10s between runs
     }
   };
 
   runSync();
-  setInterval(runSync, 5000); // Increased to 5s to be safer
 });
 
-// Increase timeout for huge files
 server.setTimeout(600000); // 10 minutes timeout
