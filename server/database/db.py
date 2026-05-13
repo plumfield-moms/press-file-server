@@ -36,12 +36,10 @@ def db_conn():
 def db_setup():
     with db_conn() as conn:
         conn.execute(
-            "CREATE TABLE users IF NOT EXISTS(email PRIMARY KEY, username TEXT, role TEXT);"
+            "CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, username TEXT, role TEXT);"
         )
         cursor = conn.cursor()
-        cursor.executemany("REPLACE INTO users VALUES (?,?,?)", USERS)
-        conn.commit()
-        conn.close()
+        cursor.executemany("INSERT OR REPLACE INTO users VALUES (?,?,?)", USERS)
 
 
 def get_user(email: str) -> User | None:
