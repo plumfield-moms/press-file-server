@@ -22,6 +22,8 @@ def get_proofs_dir() -> Path:
     p.mkdir(parents=True, exist_ok=True)
     for stage in STAGES:
         (p / stage).mkdir(exist_ok=True)
+    # Ensure notes directory exists
+    (p / "notes").mkdir(exist_ok=True)
     return p
 
 def find_proof(proof_id: str) -> tuple[Path, str] | None:
@@ -32,6 +34,20 @@ def find_proof(proof_id: str) -> tuple[Path, str] | None:
         if path.exists():
             return path, stage
     return None
+
+def find_docx(proof_id: str) -> Path | None:
+    """Locates a docx file in the notes folder."""
+    base = get_proofs_dir()
+    path = base / "notes" / f"{proof_id}.docx"
+    return path if path.exists() else None
+
+def save_docx(proof_id: str, file: UploadFile):
+    """Saves a docx file to the notes folder."""
+    base = get_proofs_dir()
+    dest = base / "notes" / f"{proof_id}.docx"
+    with dest.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return dest
 
 def get_all_proofs():
     """Lists all proofs by scanning the folder structure."""

@@ -4,4 +4,6 @@ proofs/*
 dist/
 /server-js/
 venv/
-*.db
+*.sqlite
+*.pyc
+__pycache__/
