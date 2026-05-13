@@ -152,7 +152,7 @@ function App() {
         ) : (
           <div>
             <h2 className="text-5xl font-black text-plum mb-12 tracking-tighter">Dashboard</h2>
-            <div className="flex flex-wrap pb-8 gap-8 -mx-6 px-6 no-scrollbar">
+            <div className="flex flex-wrap gap-8 justify-center">
               {['ed', 'diane', 'sara', 'kristi', 'diane_2', 'done'].map(stage => (
                 <StageColumn
                   key={stage}
@@ -162,7 +162,11 @@ function App() {
                 />
               ))}
             </div>
+
           </div>
+
+
+
         )}
       </main>
     </div>
