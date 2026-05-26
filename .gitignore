@@ -5,5 +5,7 @@ dist/
 /server-js/
 venv/
 *.sqlite
+*.sqlite-*
 *.pyc
 __pycache__/
+.DS_Store
