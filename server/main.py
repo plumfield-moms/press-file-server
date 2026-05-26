@@ -10,6 +10,8 @@ from server.database.db import db_setup
 from server.database.notifications import init_notifications_db
 from server.filesystem.main import get_proofs_dir
 import subprocess
+from server.notifications.main import notify_ed_loop
+import asyncio
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
@@ -28,10 +30,16 @@ async def lifespan(app: FastAPI):
     # Ensure Proofs directory exists
     get_proofs_dir()
     cloudflared = subprocess.Popen([CLOUDFLARED, "tunnel", "run", "--token", TOKEN])
+    notify_task = asyncio.create_task(notify_ed_loop())
     try:
         yield
     finally:
         cloudflared.terminate()
+        notify_task.cancel()
+        try:
+            await notify_task
+        except asyncio.CancelledError:
+            pass
         try:
             cloudflared.wait(timeout=10)
         except subprocess.TimeoutExpired:
