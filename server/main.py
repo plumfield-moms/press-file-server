@@ -3,11 +3,21 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 from server.api.api_routes import router as api_router
 from server.database.db import db_setup
 from server.database.notifications import init_notifications_db
 from server.filesystem.main import get_proofs_dir
+import subprocess
+
+BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env")
+CLOUDFLARED = "/opt/homebrew/bin/cloudflared"
+TOKEN = os.getenv("TUNNEL_TOKEN") or ""
+if not TOKEN:
+
+    raise RuntimeError("Missing TUNNEL_TOKEN")
 
 
 @asynccontextmanager
@@ -17,7 +27,15 @@ async def lifespan(app: FastAPI):
     init_notifications_db()
     # Ensure Proofs directory exists
     get_proofs_dir()
-    yield
+    cloudflared = subprocess.Popen([CLOUDFLARED, "tunnel", "run", "--token", TOKEN])
+    try:
+        yield
+    finally:
+        cloudflared.terminate()
+        try:
+            cloudflared.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            cloudflared.kill()
 
 
 app = FastAPI(lifespan=lifespan)
