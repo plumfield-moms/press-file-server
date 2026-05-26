@@ -1,29 +1,29 @@
-import React, { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Download, CheckCircle, Clock, ArrowRight, User, FileText } from 'lucide-react';
+import { ArrowRight, Clock, Download, FileText, Send, User, X } from 'lucide-react';
+import { useRef, useState } from 'react';
 
 type Proof = {
   id: string;
-  book_title: string;
-  current_stage: 'ed' | 'diane' | 'sara' | 'kristi' | 'diane-2' | 'done';
-  created_at: number;
-  files: {
-    original: boolean;
-    ed: boolean;
-    edDraft?: boolean;
-    diane: boolean;
-    sara: boolean;
-    kristi: boolean;
-    done: boolean;
-    docx: boolean;
-  };
+  stage: string;
+  can_upload: boolean;
+  can_download: boolean;
+  has_notes: boolean;
+};
+
+type UserProfile = {
+  email: string;
+  username: string;
+  role: string;
 };
 
 const api = axios.create({
   baseURL: '/api',
 });
-
+function caps(string: string) {
+  if (!string) return ""; // Handle empty strings
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}
 function App() {
   const [viewId, setViewId] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -31,7 +31,7 @@ function App() {
   const { data: me, isLoading: isLoadingMe, error: meError } = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
-      const res = await api.get<{ user: 'ed' | 'diane' | 'sara' | 'kristi' | 'viewer' }>('/me');
+      const res = await api.get<UserProfile>('/me');
       return res.data;
     },
     retry: false,
@@ -49,104 +49,89 @@ function App() {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   const uploadVersionMutation = useMutation({
-    mutationFn: async ({ id, formData }: { id: string; formData: FormData }) => {
+    mutationFn: async ({ id, file }: { id: string; file: File }) => {
+      const formData = new FormData();
+      formData.append('file', file);
       setUploadProgress(0);
       await api.post(`/proofs/${id}/upload`, formData, {
         onUploadProgress: (progressEvent) => {
-          const progress = progressEvent.total 
-            ? Math.round((progressEvent.loaded * 100) / progressEvent.total) 
+          const progress = progressEvent.total
+            ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
             : null;
           setUploadProgress(progress);
         },
-        // Increase client-side timeout for huge files
-        timeout: 600000, 
+        timeout: 600000,
       });
     },
     onSuccess: () => {
       setUploadProgress(null);
       queryClient.invalidateQueries({ queryKey: ['proofs'] });
       queryClient.invalidateQueries({ queryKey: ['proof', viewId] });
-      alert('File uploaded successfully!');
+      alert('Proof advanced to next stage!');
     },
     onError: (error: any) => {
       setUploadProgress(null);
       console.error('Upload failed:', error);
-      const msg = error.response?.data?.error || error.message;
-      alert(`Upload Status: ${msg}\n\nNote: If this was a very large file, please refresh the page to see if it actually finished.`);
+      const msg = error.response?.data?.detail || error.message;
+      alert(`Upload Status: ${msg}`);
     }
   });
 
-  const submitMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await api.post(`/proofs/${id}/submit`);
+  const uploadNotesMutation = useMutation({
+    mutationFn: async ({ id, file }: { id: string; file: File }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      await api.post(`/proofs/${id}/notes`, formData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proofs'] });
       queryClient.invalidateQueries({ queryKey: ['proof', viewId] });
-      alert('Submitted successfully!');
+      alert('Notes updated successfully!');
     },
     onError: (error: any) => {
-      console.error('Submit failed:', error);
-      alert(`Submission failed: ${error.response?.data?.error || error.message}`);
-    }
-  });
-
-  const uploadDocxMutation = useMutation({
-    mutationFn: async ({ id, formData }: { id: string; formData: FormData }) => {
-      await api.post(`/proofs/${id}/upload-docx`, formData);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['proofs'] });
-      queryClient.invalidateQueries({ queryKey: ['proof', viewId] });
-      alert('Word document uploaded successfully!');
-    },
-    onError: (error: any) => {
-      console.error('Docx upload failed:', error);
-      alert(`Docx upload failed: ${error.response?.data?.error || error.message}`);
+      console.error('Notes upload failed:', error);
+      alert(`Notes upload failed: ${error.response?.data?.detail || error.message}`);
     }
   });
 
   if (isLoadingMe) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-paper">
-        <p className="text-plum animate-pulse font-serif italic text-xl">Identifying user...</p>
+      <div className="min-h-screen flex items-center justify-center bg-paper text-plum">
+        <p className="animate-pulse font-serif italic text-xl">Identifying user...</p>
       </div>
     );
   }
 
   if (meError || !me) {
-    const errorData = (meError as any)?.response?.data;
     return (
-      <div className="min-h-screen flex items-center justify-center bg-paper">
-        <div className="bg-white/80 backdrop-blur p-8 rounded-lg shadow-xl w-96 text-center border-t-4 border-plum">
-          <h1 className="text-3xl font-bold mb-4 text-plum">Access Denied</h1>
-          <p className="text-gray-700 mb-2">You do not have permission to access this system.</p>
-          <p className="text-sm text-gray-500 mb-6 font-mono bg-black/5 p-2 rounded">Authenticated as: {errorData?.email || 'Unknown'}</p>
+      <div className="min-h-screen flex items-center justify-center bg-paper p-6">
+        <div className="bg-white/80 backdrop-blur p-8 rounded-2xl shadow-xl w-full max-w-md text-center border-t-4 border-plum">
+          <h1 className="text-3xl font-black mb-4 text-plum">Access Denied</h1>
+          <p className="text-gray-700 mb-6 font-serif">You do not have permission to access this system.</p>
           <p className="text-xs text-gray-400">Please contact the administrator to authorize your email.</p>
         </div>
       </div>
     );
   }
 
-  const user = me.user;
-
   return (
-    <div className="min-h-screen bg-paper text-gray-800">
-      <header className="bg-plum text-paper shadow-lg">
-        <div className="max-w-7xl mx-auto px-6 py-6 flex justify-between items-center">
-          <h1 
-            className="text-2xl font-black tracking-tight cursor-pointer hover:opacity-90 transition" 
+    <div className="min-h-screen bg-paper text-gray-800 font-sans">
+      <header className="bg-plum text-paper shadow-lg sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          <h1
+            className="text-xl font-black tracking-tighter cursor-pointer hover:opacity-80 transition flex items-center gap-2"
             onClick={() => setViewId(null)}
           >
-            Plumfield Press <span className="font-light opacity-80 italic">Review System</span>
+            PLUMFIELD PRESS <span className="font-light italic opacity-60">Review</span>
           </h1>
-          <div className="flex items-center gap-4">
-            <div className="bg-paper/10 px-4 py-1 rounded-full border border-paper/20">
-              <span className="text-sm font-medium">Logged in as: <strong className="uppercase">{user}</strong></span>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest opacity-80">
+              <User size={14} />
+              {me.username}
             </div>
-            <button 
+            <button
               onClick={() => window.location.href = '/cdn-cgi/access/logout'}
-              className="text-xs font-bold uppercase tracking-widest opacity-60 hover:opacity-100 transition border border-paper/40 px-3 py-1 rounded hover:bg-paper/10"
+              className="text-[10px] font-black uppercase tracking-widest border border-paper/30 px-3 py-1.5 rounded-md hover:bg-paper hover:text-plum transition-all"
             >
               Logout
             </button>
@@ -156,95 +141,63 @@ function App() {
 
       <main className="max-w-7xl mx-auto px-6 py-10">
         {viewId ? (
-          <ProofDetail 
-            id={viewId} 
-            user={user} 
-            onBack={() => setViewId(null)} 
-            onUpload={(formData) => uploadVersionMutation.mutate({ id: viewId, formData })}
-            onUploadDocx={(formData) => uploadDocxMutation.mutate({ id: viewId, formData })}
-            onSubmit={() => submitMutation.mutate(viewId)}
+          <ProofDetail
+            id={viewId}
+            user={me}
+            onBack={() => setViewId(null)}
+            onUpload={(file) => uploadVersionMutation.mutate({ id: viewId, file })}
+            onUploadNotes={(file) => uploadNotesMutation.mutate({ id: viewId, file })}
             uploadProgress={uploadProgress}
           />
         ) : (
           <div>
-            <div className="flex justify-between items-center mb-10 border-b border-plum/10 pb-4">
-              <h2 className="text-4xl font-black text-plum">Dashboard</h2>
+            <h2 className="text-5xl font-black text-plum mb-12 tracking-tighter">Dashboard</h2>
+            <div className="flex flex-wrap gap-8 justify-center">
+              {['ed', 'diane', 'sara', 'kristi', 'diane_2', 'done'].map(stage => (
+                <StageColumn
+                  key={stage}
+                  title={caps(stage.replace('_', ' '))}
+                  proofs={proofs?.filter(p => p.stage === stage) || []}
+                  onView={setViewId}
+                />
+              ))}
             </div>
 
-            {isLoadingProofs ? (
-              <p className="text-center py-20 text-plum/50 font-serif italic">Loading proofs...</p>
-            ) : (
-              <div className="flex flex-wrap gap-6">
-                <StageColumn 
-                  title="Ed's Stage" 
-                  proofs={proofs?.filter(p => p.current_stage === 'ed') || []} 
-                  onView={setViewId}
-                  color="plum"
-                />
-                <StageColumn 
-                  title="Diane's Stage" 
-                  proofs={proofs?.filter(p => p.current_stage === 'diane') || []} 
-                  onView={setViewId}
-                  color="plum"
-                />
-                <StageColumn 
-                  title="Sara's Stage" 
-                  proofs={proofs?.filter(p => p.current_stage === 'sara') || []} 
-                  onView={setViewId}
-                  color="plum"
-                />
-                <StageColumn
-                  title="Kristi's Stage"
-                  proofs={proofs?.filter(p => p.current_stage === 'kristi') || []}
-                  onView={setViewId}
-                  color="plum"
-                />
-                <StageColumn
-                  title="Diane (2nd Pass)"
-                  proofs={proofs?.filter(p => p.current_stage === 'diane-2') || []}
-                  onView={setViewId}
-                  color="plum"
-                />
-                <StageColumn
-                  title="Done"
-                  proofs={proofs?.filter(p => p.current_stage === 'done') || []}
-                  onView={setViewId}
-                  color="plum"
-                />              </div>
-            )}
           </div>
+
+
+
         )}
       </main>
     </div>
   );
 }
 
-function StageColumn({ title, proofs, onView, color }: { title: string, proofs: Proof[], onView: (id: string) => void, color: string }) {
+function StageColumn({ title, proofs, onView }: { title: string, proofs: Proof[], onView: (id: string) => void }) {
   return (
-    <div className="w-[350px] bg-white/40 backdrop-blur-sm border border-plum/10 rounded-xl p-4 shadow-sm flex flex-col h-full shrink-0">
-      <h3 className="font-serif text-xl font-bold mb-4 text-plum border-b border-plum/20 pb-2 flex justify-between items-center">
+    <div className="w-[320px] shrink-0 flex flex-col">
+      <h3 className="font-serif text-lg font-black mb-6 text-plum flex items-center justify-between border-b-2 border-plum/10 pb-2">
         <span>{title}</span>
-        <span className="text-sm font-normal opacity-60">({proofs.length})</span>
+        <span className="text-xs font-mono opacity-40">{proofs.length}</span>
       </h3>
-      <div className="space-y-3 flex-grow">
+      <div className="space-y-4">
         {proofs.map(proof => (
-          <div 
-            key={proof.id} 
+          <div
+            key={proof.id}
             onClick={() => onView(proof.id)}
-            className="bg-white p-4 rounded-lg border border-plum/5 shadow-sm hover:shadow-md hover:border-plum/20 cursor-pointer transition-all flex justify-between items-center group"
+            className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl border border-plum/5 shadow-sm hover:shadow-md hover:border-plum/20 cursor-pointer transition-all flex justify-between items-center group relative overflow-hidden"
           >
-            <div className="min-w-0 flex-1 mr-2">
-              <div className="font-bold text-gray-900 text-base group-hover:text-plum transition-colors truncate" title={proof.book_title}>{proof.book_title}</div>
-              <div className="text-[10px] text-gray-400 mt-1 uppercase tracking-widest font-semibold">
-                ID: {proof.id.slice(0, 6)}...
-              </div>
+            {proof.has_notes && <div className="absolute top-0 right-0 w-2 h-full bg-blue-500/20" />}
+            <div className="min-w-0 flex-1 mr-4">
+              <div className="font-black text-gray-900 text-base group-hover:text-plum transition-colors truncate tracking-tight">{proof.id}</div>
+              {proof.has_notes && <div className="text-[10px] text-blue-600 font-black uppercase mt-1 tracking-tighter">Editorial Notes attached</div>}
             </div>
-            <ArrowRight size={16} className="text-plum/30 group-hover:text-plum group-hover:translate-x-1 transition-all flex-shrink-0" />
+            <ArrowRight size={18} className="text-plum/20 group-hover:text-plum group-hover:translate-x-1 transition-all flex-shrink-0" />
           </div>
         ))}
         {proofs.length === 0 && (
-          <div className="text-plum/30 text-xs text-center py-8 font-serif italic border-2 border-dashed border-plum/10 rounded-lg">
-            No items
+          <div className="text-plum/20 text-xs text-center py-12 font-serif italic border-2 border-dashed border-plum/10 rounded-2xl">
+            No active proofs
           </div>
         )}
       </div>
@@ -252,293 +205,201 @@ function StageColumn({ title, proofs, onView, color }: { title: string, proofs: 
   );
 }
 
-function ProofDetail({ id, user, onBack, onUpload, onUploadDocx, onSubmit, uploadProgress }: { id: string, user: string, onBack: () => void, onUpload: (f: FormData) => void, onUploadDocx: (f: FormData) => void, onSubmit: () => void, uploadProgress: number | null }) {
+function ProofDetail({ id, user, onBack, onUpload, onUploadNotes, uploadProgress }: { id: string, user: UserProfile, onBack: () => void, onUpload: (f: File) => void, onUploadNotes: (f: File) => void, uploadProgress: number | null }) {
+  const [stagedFile, setStagedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const { data: proof, isLoading } = useQuery({
     queryKey: ['proof', id],
     queryFn: async () => {
-      const res = await api.get<Proof & { files: any }>(`/proofs/${id}`);
+      const res = await api.get<Proof>(`/proofs/${id}`);
       return res.data;
     },
   });
 
-  if (isLoading || !proof) return <p className="text-center py-20 text-plum font-serif italic">Loading details...</p>;
-
-  const canUpload = (proof.current_stage === user) || (user === 'diane' && proof.current_stage === 'diane-2');
+  if (isLoading || !proof) return <p className="text-center py-20 text-plum font-serif italic animate-pulse">Loading proof details...</p>;
 
   return (
-    <div className="bg-white/60 backdrop-blur-md rounded-2xl shadow-xl border border-plum/10 overflow-hidden">
-      <div className="bg-plum/5 p-4 border-b border-plum/10">
-        <button onClick={onBack} className="text-sm font-bold text-plum hover:text-plum-light transition flex items-center gap-2 group">
-          <span className="group-hover:-translate-x-1 transition-transform">&larr;</span> Back to Dashboard
+    <div className="bg-white/60 backdrop-blur-md rounded-3xl shadow-2xl border border-plum/10 overflow-hidden max-w-5xl mx-auto">
+      <div className="bg-plum/5 p-4 border-b border-plum/10 flex justify-between items-center px-8">
+        <button onClick={onBack} className="text-xs font-black text-plum hover:opacity-70 transition flex items-center gap-2 uppercase tracking-widest">
+          &larr; Back
         </button>
+        <span className="text-[10px] font-black text-plum/40 uppercase tracking-widest italic">Proof ID: {id}</span>
       </div>
 
-      <div className="p-10">
-        <div className="flex flex-col md:flex-row justify-between items-start mb-12 gap-6">
-          <div>
-            <h2 className="text-5xl font-black text-plum mb-4 leading-tight">{proof.book_title}</h2>
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="px-4 py-1.5 bg-plum text-paper rounded-full text-xs font-black uppercase tracking-widest">
-                Stage: {proof.current_stage === 'diane-2' ? "Diane (2nd Pass)" : proof.current_stage}
-              </span>
-              <span className="px-4 py-1.5 bg-white border border-plum/10 text-gray-500 rounded-full text-xs font-semibold uppercase tracking-widest">
-                Created {new Date(proof.created_at).toLocaleDateString()}
-              </span>
-            </div>
-          </div>
+      <div className="p-12">
+        <div className="mb-16">
+          <h2 className="text-6xl font-black text-plum mb-6 tracking-tighter leading-none">{id}</h2>
+          <span className="px-6 py-2 bg-plum text-paper rounded-full text-xs font-black uppercase tracking-widest inline-block">
+            Current Stage: {proof.stage.replace('_', ' ')}
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          <div>
-            <h3 className="text-2xl font-bold mb-6 text-plum flex items-center gap-3">
-              <Download size={24} className="opacity-50" />
-              Manuscript Files
-            </h3>
-            <div className="space-y-4">
-              {/* Only Ed and Viewer see the Original Manuscript */}
-              {(user === 'ed' || user === 'viewer') && (
-                <DownloadLink id={id} type="original" label="Original Manuscript" exists={proof.files.original} />
-              )}
-              
-              <DownloadLink id={id} type="docx" label="Editorial Notes (Word)" exists={proof.files.docx} isDocx />
-              
-              {proof.files.docx && proof.current_stage !== 'ed' && (
-                <a 
-                  href={`/api/proofs/${id}/extract-text`} 
-                  className="flex items-center justify-between p-5 rounded-xl border transition-all group shadow-sm hover:shadow-md bg-amber-50/30 border-amber-100 text-amber-900 hover:border-amber-400"
-                  download
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 rounded-lg bg-amber-100 group-hover:bg-amber-600 group-hover:text-white transition-colors">
-                      <FileText size={20} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+          <div className="space-y-12">
+            <section>
+              <h3 className="text-sm font-black text-plum/30 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                <Download size={16} /> 1. Retrieve Current
+              </h3>
+              <div className="space-y-4">
+                {proof.can_download ? (
+                  <a
+                    href={`/api/proofs/${id}/download`}
+                    className="flex items-center justify-between p-6 rounded-2xl border-2 border-plum/5 bg-white text-plum transition-all group hover:shadow-lg hover:border-plum"
+                    download
+                  >
+                    <div className="flex items-center gap-5">
+                      <div className="p-3 rounded-xl bg-plum/5 group-hover:bg-plum group-hover:text-paper transition-all">
+                        <Download size={24} />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-lg font-black tracking-tight leading-none mb-1">Latest Version</span>
+                        <span className="text-[10px] uppercase font-bold opacity-40">PDF Document</span>
+                      </div>
                     </div>
-                    <span className="text-base font-bold tracking-tight">Plain Text Notes</span>
+                  </a>
+                ) : (
+                  <div className="p-6 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-100 text-gray-300 flex items-center gap-5 italic grayscale">
+                    <Download size={24} className="opacity-20" />
+                    <span className="text-sm font-bold uppercase tracking-widest">Restricted in this stage</span>
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-tighter opacity-30 group-hover:opacity-100 transition-opacity">Download TXT</span>
-                </a>
-              )}
+                )}
 
-              {/* Prominent section for the version to be reviewed */}
-              {!isLoading && proof.current_stage !== 'done' && (user === proof.current_stage || (user === 'diane' && proof.current_stage === 'diane-2')) && (
-                <div className="mt-8 p-6 bg-plum/5 border-2 border-plum/20 rounded-2xl">
-                  <h4 className="text-sm font-black text-plum uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <ArrowRight size={16} /> Current Review Task
-                  </h4>
-                  {user === 'ed' && (
-                    <DownloadLink id={id} type="original" label="Download Original to Edit" exists={proof.files.original} />
-                  )}
-                  {user === 'diane' && proof.current_stage === 'diane' && (
-                    <DownloadLink id={id} type="ed" label="Download Ed's Version to Review" exists={proof.files.ed} />
-                  )}
-                  {user === 'sara' && proof.current_stage === 'sara' && (
-                    <DownloadLink id={id} type="diane" label="Download Diane's Version to Review" exists={proof.files.diane} />
-                  )}
-                  {user === 'kristi' && proof.current_stage === 'kristi' && (
-                    <DownloadLink id={id} type="sara" label="Download Sara's Version to Review" exists={proof.files.sara} />
-                  )}
-                  {user === 'diane' && proof.current_stage === 'diane-2' && (
-                    <DownloadLink id={id} type="kristi" label="Download Kristi's Version for Final Pass" exists={proof.files.kristi} />
-                  )}
-                </div>
-              )}
-
-              {user === 'viewer' ? (
-                <div className="space-y-4 pt-4 border-t border-plum/10">
-                  <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">Version History</h4>
-                  <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />
-                  <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />
-                  <DownloadLink id={id} type="sara" label="Sara's Edited Version" exists={proof.files.sara} />
-                  <DownloadLink id={id} type="kristi" label="Kristi's Edited Version" exists={proof.files.kristi} />
-                  <DownloadLink id={id} type="done" label="Final Version" exists={proof.files.done} />
-                </div>
-              ) : (
-                <div className="space-y-4 pt-4 border-t border-plum/10">
-                  {user === 'ed' && proof.files.edDraft && <DownloadLink id={id} type="edDraft" label="My Current Draft" exists={true} />}
-                  
-                  {proof.current_stage === 'done' && (
-                    <div className="space-y-4">
-                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">Finalized Files</h4>
-                      <DownloadLink id={id} type="ed" label="Ed's Edited Version" exists={proof.files.ed} />
-                      <DownloadLink id={id} type="diane" label="Diane's Edited Version" exists={proof.files.diane} />
-                      <DownloadLink id={id} type="sara" label="Sara's Edited Version" exists={proof.files.sara} />
-                      <DownloadLink id={id} type="kristi" label="Kristi's Edited Version" exists={proof.files.kristi} />
-                      <DownloadLink id={id} type="done" label="Final Version" exists={proof.files.done} />
+                {proof.has_notes && (
+                  <a
+                    href={`/api/proofs/${id}/notes`}
+                    className="flex items-center justify-between p-6 rounded-2xl border-2 border-blue-100 bg-blue-50/30 text-blue-900 transition-all group hover:shadow-lg hover:border-blue-500"
+                    download
+                  >
+                    <div className="flex items-center gap-5">
+                      <div className="p-3 rounded-xl bg-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                        <FileText size={24} />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-lg font-black tracking-tight leading-none mb-1">Editorial Notes</span>
+                        <span className="text-[10px] uppercase font-bold opacity-40">DOCX Document</span>
+                      </div>
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
+                  </a>
+                )}
+              </div>
+            </section>
+
+            {(user.username === 'ed' || user.role === 'admin') && (
+              <section className="pt-8 border-t border-plum/10">
+                <h3 className="text-sm font-black text-plum/30 uppercase tracking-[0.2em] mb-6">Optional: Add Notes</h3>
+                <input
+                  type="file"
+                  accept=".docx"
+                  id="notes-upload"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) onUploadNotes(file);
+                  }}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="notes-upload"
+                  className="flex items-center justify-center gap-3 w-full py-5 px-6 bg-blue-50/30 border-2 border-dashed border-blue-200 rounded-2xl cursor-pointer hover:bg-blue-50 hover:border-blue-500 transition-all text-blue-800 font-black uppercase text-xs tracking-widest"
+                >
+                  <FileText size={18} />
+                  {proof.has_notes ? 'Update Word Doc' : 'Attach Word Doc'}
+                </label>
+              </section>
+            )}
           </div>
 
-          <div className="bg-white/80 p-8 rounded-2xl border border-plum/10 shadow-sm">
-            <h3 className="text-2xl font-bold mb-6 text-plum flex items-center gap-3">
-              <Clock size={24} className="opacity-50" />
-              Required Action
+          <div className="bg-plum/5 p-10 rounded-3xl border border-plum/10 relative">
+            <h3 className="text-sm font-black text-plum/30 uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
+              <Clock size={16} /> 2. Submit Review
             </h3>
-            {proof.current_stage === 'done' ? (
-              <div className="bg-green-50 border border-green-200 p-6 rounded-xl flex items-center gap-4 text-green-800">
-                <CheckCircle size={32} className="text-green-600" />
-                <div>
-                  <div className="font-black text-lg uppercase tracking-tight">Review Complete</div>
-                  <div className="text-sm opacity-80">The final manuscript has been finalized and archived.</div>
+
+            {proof.can_upload ? (
+              <div className="space-y-8">
+                {uploadProgress !== null && (
+                  <div className="absolute inset-0 bg-plum/90 backdrop-blur-sm z-20 flex flex-col items-center justify-center p-12 text-paper rounded-3xl">
+                    <div className="text-4xl font-black mb-8 tracking-tighter">{uploadProgress}%</div>
+                    <div className="w-full max-w-xs h-3 bg-white/20 rounded-full overflow-hidden mb-4">
+                      <div className="bg-paper h-full transition-all" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                    <p className="text-xs font-black uppercase tracking-widest opacity-60 animate-pulse">Processing Manuscript...</p>
+                  </div>
+                )}
+
+                <div className="space-y-6">
+                  {stagedFile ? (
+                    <div className="bg-white p-8 rounded-2xl border-2 border-plum shadow-xl animate-in zoom-in-95 duration-200">
+                      <div className="flex justify-between items-start mb-6">
+                        <div className="flex items-center gap-4">
+                          <div className="p-3 bg-plum text-paper rounded-xl">
+                            <FileText size={24} />
+                          </div>
+                          <div>
+                            <div className="font-black text-plum text-lg truncate max-w-[200px]">{stagedFile.name}</div>
+                            <div className="text-[10px] font-black uppercase opacity-40">Ready to advance</div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setStagedFile(null)}
+                          className="p-2 hover:bg-red-50 text-red-400 rounded-lg transition-colors"
+                        >
+                          <X size={20} />
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => onUpload(stagedFile)}
+                        className="w-full py-5 bg-plum text-paper rounded-xl font-black uppercase tracking-[0.2em] text-sm hover:scale-[1.02] active:scale-95 transition-all shadow-xl flex items-center justify-center gap-4"
+                      >
+                        <Send size={18} />
+                        Submit and Advance
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="group relative">
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        ref={fileInputRef}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setStagedFile(file);
+                        }}
+                        className="hidden"
+                      />
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex flex-col items-center justify-center w-full py-16 px-8 bg-white/50 border-2 border-dashed border-plum/20 rounded-3xl cursor-pointer hover:bg-white hover:border-plum transition-all group"
+                      >
+                        <div className="bg-plum/5 p-5 rounded-full mb-6 group-hover:scale-110 transition-transform">
+                          <ArrowRight className="text-plum rotate-90" size={32} />
+                        </div>
+                        <span className="font-black text-plum text-xl tracking-tight mb-2">Select Revised PDF</span>
+                        <span className="text-[10px] text-plum/40 uppercase font-black tracking-widest tracking-tighter text-center max-w-[200px]">Selecting a file will stage it for final submission.</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="text-[10px] text-plum/30 font-bold uppercase text-center leading-relaxed">
+                    Submitting will move this proof to the next person in the workflow. <br /> This action cannot be undone.
+                  </div>
                 </div>
               </div>
             ) : (
-              <div>
-                <div className="mb-8 p-4 bg-paper/30 rounded-lg border border-plum/5">
-                  <span className="text-xs font-black text-plum/50 uppercase tracking-widest mb-1 block">Status:</span>
-                  <div className="font-bold text-plum text-xl flex items-center gap-2 uppercase tracking-tight">
-                    Review Required by <span className="underline decoration-plum/30 underline-offset-4 capitalize">{proof.current_stage}</span>
-                  </div>
-                </div>
-
-                {canUpload ? (
-                  <div className="space-y-8">
-                    {/* Upload Progress Bar */}
-                    {uploadProgress !== null && (
-                      <div className="bg-plum/5 p-6 rounded-2xl border-2 border-plum/10 animate-in fade-in slide-in-from-top-4 duration-300">
-                        <div className="flex justify-between items-end mb-3">
-                          <div>
-                            <div className="text-plum font-black uppercase tracking-widest text-xs mb-1">Upload in Progress</div>
-                            <div className="text-plum/60 text-sm font-medium italic">Please keep this window open...</div>
-                          </div>
-                          <div className="text-plum font-black text-2xl tracking-tighter">{uploadProgress}%</div>
-                        </div>
-                        <div className="w-full bg-paper/50 rounded-full h-4 overflow-hidden border border-plum/10 p-0.5 shadow-inner">
-                          <div 
-                            className="bg-plum h-full rounded-full transition-all duration-300 ease-out shadow-lg"
-                            style={{ width: `${uploadProgress}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* PDF Upload */}
-                    <div className={uploadProgress !== null ? 'opacity-40 pointer-events-none' : ''}>
-                      <div className="relative group">
-                        <input 
-                          type="file" 
-                          accept=".pdf"
-                          id="file-upload"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              const fd = new FormData();
-                              fd.append('pdf', file);
-                              onUpload(fd);
-                            }
-                          }}
-                          className="hidden"
-                        />
-                        <label 
-                          htmlFor="file-upload"
-                          className="flex flex-col items-center justify-center w-full py-10 px-4 bg-white border-2 border-dashed border-plum/20 rounded-xl cursor-pointer hover:bg-plum/5 hover:border-plum transition-all group"
-                        >
-                          <div className="bg-plum/10 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
-                            <ArrowRight className="text-plum rotate-90" size={24} />
-                          </div>
-                          <span className="font-bold text-plum text-lg">Click to Upload Revised PDF</span>
-                          <span className="text-xs text-gray-400 mt-2 font-medium">Accepts .pdf files only</span>
-                        </label>
-                      </div>
-                      <div className="bg-plum text-paper p-4 rounded-lg text-xs font-medium text-center italic opacity-80 shadow-inner">
-                        {user === 'ed' 
-                          ? "Uploading will save a draft. You must click 'Submit to Diane' to finalize." 
-                          : "Uploading will automatically transition this proof to the next stage."}
-                      </div>
-                    </div>
-
-                    {/* Submit Button for Ed */}
-                    {user === 'ed' && proof.files.edDraft && (
-                      <div className="pt-4">
-                        <button 
-                          onClick={onSubmit}
-                          className="w-full py-4 bg-plum text-paper rounded-xl font-black uppercase tracking-widest hover:bg-plum-light transition-all shadow-lg flex items-center justify-center gap-3"
-                        >
-                          <CheckCircle size={20} />
-                          Submit to Diane
-                        </button>
-                        <p className="text-[10px] text-plum/50 text-center mt-2 font-bold uppercase tracking-tighter">
-                          This will notify Diane and move the proof to her stage.
-                        </p>
-                      </div>
-                    )}
-
-                    {/* DOCX Upload for Ed */}
-                    {user === 'ed' && (
-                      <div className="pt-6 border-t border-plum/10">
-                        <h4 className="text-sm font-black text-plum/60 uppercase tracking-widest mb-4">Editorial Notes (Optional)</h4>
-                        <div className="relative group">
-                          <input 
-                            type="file" 
-                            accept=".docx"
-                            id="docx-upload"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const fd = new FormData();
-                                fd.append('docx', file);
-                                onUploadDocx(fd);
-                              }
-                            }}
-                            className="hidden"
-                          />
-                          <label 
-                            htmlFor="docx-upload"
-                            className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-paper/20 border border-plum/20 rounded-xl cursor-pointer hover:bg-plum/5 hover:border-plum transition-all group"
-                          >
-                            <FileText className="text-plum/60 group-hover:text-plum" size={20} />
-                            <span className="font-bold text-plum/80 text-sm">{proof.files.docx ? 'Update Word Doc' : 'Upload Word Doc'}</span>
-                          </label>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-10 px-6 border border-plum/10 rounded-xl bg-paper/5">
-                    {user === 'viewer' ? <User size={40} className="mx-auto text-plum/20 mb-4" /> : <Clock size={40} className="mx-auto text-plum/20 mb-4" />}
-                    <p className="text-plum/60 font-serif italic text-lg leading-relaxed">
-                      {user === 'viewer' 
-                        ? "You have read-only access to this proof."
-                        : `You are in view-only mode. Waiting for ${proof.current_stage} to complete their review.`}
-                    </p>
-                  </div>
-                )}
+              <div className="text-center py-16 px-8 flex flex-col items-center">
+                <Clock size={48} className="text-plum/10 mb-6" />
+                <p className="text-plum/50 font-serif italic text-xl leading-relaxed">
+                  {proof.stage === 'done'
+                    ? "Workflow finalized. Manuscript is archived."
+                    : `Currently in review by ${proof.stage.replace('_', ' ')}.`}
+                </p>
               </div>
             )}
           </div>
         </div>
       </div>
     </div>
-  );
-}
-
-function DownloadLink({ id, type, label, exists, isDocx }: { id: string, type: string, label: string, exists: boolean, isDocx?: boolean }) {
-  if (!exists) {
-    if (type === 'docx') return null; // Don't show pending for docx if it doesn't exist
-    
-    return (
-      <div className="flex items-center gap-4 p-5 bg-gray-50/50 rounded-xl border border-gray-100 text-gray-300">
-        <Download size={20} />
-        <span className="text-sm font-bold uppercase tracking-widest">{label} <span className="text-[10px] font-normal italic opacity-60 ml-2">(Pending)</span></span>
-      </div>
-    );
-  }
-
-  return (
-    <a 
-      href={`/api/proofs/${id}/download/${type}`} 
-      className={`flex items-center justify-between p-5 rounded-xl border transition-all group shadow-sm hover:shadow-md ${isDocx ? 'bg-blue-50/30 border-blue-100 text-blue-900 hover:border-blue-400' : 'bg-white border-plum/10 text-plum hover:border-plum'}`}
-      download
-    >
-      <div className="flex items-center gap-4">
-        <div className={`p-2 rounded-lg transition-colors ${isDocx ? 'bg-blue-100 group-hover:bg-blue-600 group-hover:text-white' : 'bg-plum/10 group-hover:bg-plum group-hover:text-paper'}`}>
-          {isDocx ? <FileText size={20} /> : <Download size={20} />}
-        </div>
-        <span className="text-base font-bold tracking-tight">{label}</span>
-      </div>
-      <span className="text-[10px] font-black uppercase tracking-tighter opacity-30 group-hover:opacity-100 transition-opacity">Download {isDocx ? 'DOCX' : 'PDF'}</span>
-    </a>
   );
 }
 
