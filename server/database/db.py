@@ -49,6 +49,6 @@ def get_user(email: str) -> User | None:
             "SELECT email, username, role FROM users WHERE email = ?", (email,)
         )
         user = cursor.fetchone()
-        conn.close()
+        # conn.close()
         if user:
             return User(email=user[0], username=user[1], role=user[2])
