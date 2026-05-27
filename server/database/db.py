@@ -4,13 +4,28 @@ import sqlite3
 from server.types import User
 from functools import wraps
 from contextlib import contextmanager
+from dotenv import load_dotenv
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 DB_PATH = Path(__file__).with_name("users.sqlite")
 if DB_PATH.exists():
     DB_PATH.unlink()
 ED_EMAIL = os.getenv("ED_EMAIL")
 DIANE_EMAIL = os.getenv("DIANE_EMAIL")
 SARA_EMAIL = os.getenv("SARA_EMAIL")
+missing_emails = []
+if ED_EMAIL == None:
+    missing_emails.append("Ed")
+if DIANE_EMAIL == None:
+    missing_emails.append("Diane")
+if SARA_EMAIL == None:
+    missing_emails.append("Sara")
+if len(missing_emails) > 0:
+    print(
+        f"[DATABASE] ERROR: the following users are missing from the user database:\n{missing_emails}"
+    )
+
 MICHAEL_EMAIL = "masarikfamilymichael@gmail.com"
 USERS = [
     (ED_EMAIL, "ed", "user"),
