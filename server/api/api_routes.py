@@ -22,6 +22,7 @@ def get_current_user(
     cf_access_authenticated_user_email: Annotated[str | None, Header()] = None,
 ) -> User:
     email = cf_access_authenticated_user_email or x_user_email
+    print(f"[LOGIN] login attempt for email {email}")
 
     # Dev Mode: Auto-admin if no headers are present
     if not email and os.getenv("DEV_MODE") == "true":
@@ -30,12 +31,19 @@ def get_current_user(
         )
 
     if not email:
+        print("[LOGIN] BLOCKED login - missing email.")
+        print("[LOGIN] Headers:")
+        print(f"[LOGIN]\tx_user_email: {x_user_email}")
+        print(
+            f"[LOGIN]\tcf_access_authenticated_user_email: {cf_access_authenticated_user_email}"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing auth headers"
         )
 
     user = get_user(email)
     if not user:
+        print(f"[LOGIN] BLOCKED login for {email}: invaild user")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=f"User {email} not found"
         )
