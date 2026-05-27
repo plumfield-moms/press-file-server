@@ -9,6 +9,7 @@ type Proof = {
   can_upload: boolean;
   can_download: boolean;
   has_notes: boolean;
+  has_txt: boolean;
 };
 
 type UserProfile = {
@@ -279,6 +280,24 @@ function ProofDetail({ id, user, onBack, onUpload, onUploadNotes, uploadProgress
                       <div className="flex flex-col">
                         <span className="text-lg font-black tracking-tight leading-none mb-1">Editorial Notes</span>
                         <span className="text-[10px] uppercase font-bold opacity-40">DOCX Document</span>
+                      </div>
+                    </div>
+                  </a>
+                )}
+
+                {proof.stage !== 'ed' && proof.has_txt && (
+                  <a
+                    href={`/api/proofs/${id}/txt`}
+                    className="flex items-center justify-between p-6 rounded-2xl border-2 border-emerald-100 bg-emerald-50/30 text-emerald-950 transition-all group hover:shadow-lg hover:border-emerald-600"
+                    download
+                  >
+                    <div className="flex items-center gap-5">
+                      <div className="p-3 rounded-xl bg-emerald-100 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                        <FileText size={24} />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-lg font-black tracking-tight leading-none mb-1">Plaintext Notes</span>
+                        <span className="text-[10px] uppercase font-bold opacity-40">TXT Document</span>
                       </div>
                     </div>
                   </a>

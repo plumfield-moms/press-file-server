@@ -7,6 +7,7 @@ from server.filesystem.main import (
     get_all_proofs,
     find_proof,
     find_docx,
+    find_txt,
     save_docx,
     advance_proof,
     check_permissions,
@@ -62,6 +63,7 @@ def list_proofs(user: User = Depends(get_current_user)):
     for p in all_proofs:
         can_up, can_down = check_permissions(user.role, user.username, p["stage"])
         has_notes = find_docx(p["id"]) is not None
+        has_txt = find_txt(p["id"]) is not None
         results.append(
             Proof(
                 id=p["id"],
@@ -69,6 +71,7 @@ def list_proofs(user: User = Depends(get_current_user)):
                 can_upload=can_up,
                 can_download=can_down,
                 has_notes=has_notes,
+                has_txt=has_txt,
             )
         )
     return results
@@ -83,12 +86,14 @@ def get_proof_details(proof_id: str, user: User = Depends(get_current_user)):
     _, stage = location
     can_up, can_down = check_permissions(user.role, user.username, stage)
     has_notes = find_docx(proof_id) is not None
+    has_txt = find_txt(proof_id) is not None
     return Proof(
         id=proof_id,
         stage=stage,
         can_upload=can_up,
         can_download=can_down,
         has_notes=has_notes,
+        has_txt=has_txt,
     )
 
 
@@ -152,4 +157,17 @@ async def download_notes(proof_id: str, user: User = Depends(get_current_user)):
         path=path,
         filename=f"{proof_id}.docx",
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+
+
+@router.get("/proofs/{proof_id}/txt")
+async def download_txt(proof_id: str, user: User = Depends(get_current_user)):
+    path = find_txt(proof_id)
+    if not path:
+        raise HTTPException(status_code=404, detail="Plaintext notes not found")
+
+    return FileResponse(
+        path=path,
+        filename=f"{proof_id}.txt",
+        media_type="text/plain",
     )

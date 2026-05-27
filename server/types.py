@@ -25,3 +25,4 @@ class Proof(BaseModel):
     can_upload: bool = False
     can_download: bool = False
     has_notes: bool = False
+    has_txt: bool = False

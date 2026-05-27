@@ -6,6 +6,7 @@ from server.notifications.main import send_email
 from dotenv import load_dotenv
 from pathlib import Path
 import os
+import docx2txt
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
@@ -29,6 +30,14 @@ STAGE_OWNERS = {
     "diane_2": "diane",
     "done": None,
 }
+
+
+def convert_to_txt(path: Path, out: Path):
+    text = docx2txt.process(path)
+    with open(out, "w") as f:
+        chars = f.write(text)
+        if chars < 1:
+            print("[DOCX] ERROR: Unable to convert from DOCX to TXT")
 
 
 def get_proofs_dir() -> Path:
@@ -59,12 +68,21 @@ def find_docx(proof_id: str) -> Path | None:
     return path if path.exists() else None
 
 
+def find_txt(proof_id: str) -> Path | None:
+    """Locates a txt file in the notes folder."""
+    base = get_proofs_dir()
+    path = base / "notes" / f"{proof_id}.txt"
+    return path if path.exists() else None
+
+
 def save_docx(proof_id: str, file: UploadFile):
-    """Saves a docx file to the notes folder."""
+    """Saves a docx file to the notes folder, and converts to plaintext."""
     base = get_proofs_dir()
     dest = base / "notes" / f"{proof_id}.docx"
     with dest.open("wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+
+    convert_to_txt(dest, base / "notes" / f"{proof_id}.txt")
     return dest
 
 
