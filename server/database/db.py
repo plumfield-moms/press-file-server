@@ -32,6 +32,7 @@ USERS = [
     (DIANE_EMAIL, "diane", "user"),
     (SARA_EMAIL, "sara", "user"),
     (MICHAEL_EMAIL, "michael", "admin"),
+    ("tarpfarmer@gmail.com", "kristi", "user"),
 ]
 
 

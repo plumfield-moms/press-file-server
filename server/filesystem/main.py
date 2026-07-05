@@ -15,7 +15,7 @@ STAGES = ["ed", "diane", "sara", "kristi", "diane_2", "done"]
 EMAIL_MAP = {
     "ed": os.getenv("ED_EMAIL"),
     "sara": os.getenv("SARA_EMAIL"),
-    "kristi": os.getenv("KRISTI_EMAIL"),
+    "kristi": "tarpfarmer@gmail.com",
     "diane": os.getenv("DIANE_EMAIL"),
     "michael": "masarikfamilymichael@gmail.com",
     "diane_2": os.getenv("DIANE_EMAIL"),
