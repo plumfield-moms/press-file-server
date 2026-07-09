@@ -28,7 +28,7 @@ export function ProofDetail({
   return (
     <div className="bg-white/60 backdrop-blur-md rounded-3xl shadow-2xl border border-plum/10 overflow-hidden max-w-5xl mx-auto font-sans">
       <FilloutPopupEmbed
-        filloutId="foAdHjd1Duus"
+        filloutId="3XxsmAAjLeus"
         isOpen={isFilloutOpen}
         onClose={() => setIsFilloutOpen(false)}
       />
@@ -168,7 +168,13 @@ export function ProofDetail({
                 <h3 className="text-sm font-black text-plum/30 uppercase tracking-[0.2em] mb-6">
                   Optional: Add Notes
                 </h3>
-                <Button onClick={() => (setIsFilloutOpen(true))}>Add Proof Notes</Button>
+                <button
+                  onClick={() => setIsFilloutOpen(true)}
+                  className="flex items-center justify-center gap-3 w-full py-5 px-6 bg-blue-50/30 border-2 border-dashed border-blue-200 rounded-2xl cursor-pointer hover:bg-blue-50 hover:border-blue-500 transition-all text-blue-800 font-black uppercase text-xs tracking-widest"
+                >
+                  <FileText size={18} />
+                  Add Proof Notes
+                </button>
               </section>
             )}
           </div>
