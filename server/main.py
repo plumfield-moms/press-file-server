@@ -6,18 +6,20 @@ from pathlib import Path
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 from server.api.api_routes import router as api_router
-from server.database.db import db_setup
+from server.database.db import user_db_setup, state_db_setup
 from server.database.notifications import init_notifications_db
 from server.filesystem.main import get_proofs_dir
 import subprocess
 from server.notifications.main import notify_ed_loop
 import asyncio
+from server.server_mcp.main import mcp_app
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 CLOUDFLARED = "/opt/homebrew/bin/cloudflared"
+DEV = True
 TOKEN = os.getenv("TUNNEL_TOKEN") or ""
-if not TOKEN:
+if not TOKEN and not DEV:
 
     raise RuntimeError("Missing TUNNEL_TOKEN")
 
@@ -25,7 +27,8 @@ if not TOKEN:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialize Databases
-    db_setup()
+    user_db_setup()
+    state_db_setup()
     init_notifications_db()
     # Ensure Proofs directory exists
     get_proofs_dir()
@@ -50,34 +53,37 @@ app = FastAPI(lifespan=lifespan)
 
 # Include API routes first so they take precedence
 app.include_router(api_router)
+app.mount("/mcp", mcp_app)
 
-# Serve Frontend static files
-client_dist = Path(__file__).parent.parent / "client" / "dist"
 
-if client_dist.exists():
-    # Mount the assets/static files
-    app.mount("/assets", StaticFiles(directory=client_dist / "assets"), name="assets")
-
-    # Catch-all route to serve index.html for SPA routing
-    @app.get("/{rest_of_path:path}")
-    async def serve_frontend(rest_of_path: str):
-        # If the path looks like an API call, we let FastAPI return 404 naturally
-        if rest_of_path.startswith("api/"):
-            return {"detail": "Not Found"}
-
-        index_file = client_dist / "index.html"
-        if index_file.exists():
-            return FileResponse(index_file)
-        return {"detail": "Frontend build not found"}
-
-else:
-
-    @app.get("/")
-    def read_root():
-        return {
-            "status": "running",
-            "warning": "Frontend build (client/dist) not found",
-        }
+# # Serve Frontend static files
+# client_dist = Path(__file__).parent.parent / "client" / "dist"
+#
+# if client_dist.exists():
+#     # Mount the assets/static files
+#     app.mount("/assets", StaticFiles(directory=client_dist / "assets"), name="assets")
+#
+#     # Catch-all route to serve index.html for SPA routing
+#     @app.get("/{rest_of_path:path}")
+#     async def serve_frontend(rest_of_path: str):
+#         # If the path looks like an API call, we let FastAPI return 404 naturally
+#         if rest_of_path.startswith("api/"):
+#             return {"detail": "Not Found"}
+#
+#         index_file = client_dist / "index.html"
+#         if index_file.exists():
+#             return FileResponse(index_file)
+#         return {"detail": "Frontend build not found"}
+#
+# else:
+#
+#     @app.get("/")
+#     def read_root():
+#         return {
+#             "status": "running",
+#             "warning": "Frontend build (client/dist) not found",
+#         }
+app.frontend("/", directory="dist")
 
 
 if __name__ == "__main__":

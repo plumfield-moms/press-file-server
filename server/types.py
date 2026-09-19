@@ -2,6 +2,11 @@ from pydantic import BaseModel, Field
 from enum import Enum
 from typing import Optional
 
+class State(BaseModel):
+    filepath: str
+    owner: str
+    title: str
+
 class Roles(Enum):
     USER = "user"
     ADMIN = "admin"
