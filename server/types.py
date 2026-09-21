@@ -1,10 +1,10 @@
 from pydantic import BaseModel, Field
 from enum import Enum
-from typing import Optional
+from typing import Optional, Annotated
 
 class State(BaseModel):
     filepath: str
-    owner: str
+    stage: str
     title: str
 
 class Roles(Enum):
@@ -14,11 +14,14 @@ class Roles(Enum):
 class User(BaseModel):
     email: str
     username: str
-    role: str 
+    role: str
+    name: str | None = None
+
+
 
 class CFHeaders(BaseModel):
-    cf_email: Optional[str] = Field(None, alias="cf-access-authenticated-user-email")
-    x_email: Optional[str] = Field(None, alias="x-user-email")
+    cf_email: str | None = Field(None, alias="cf-access-authenticated-user-email")
+    x_email: str | None = Field(None, alias="x-user-email")
 
     @property
     def email(self) -> str | None:
@@ -27,7 +30,6 @@ class CFHeaders(BaseModel):
 class Proof(BaseModel):
     id: str
     stage: str
-    can_upload: bool = False
-    can_download: bool = False
-    has_notes: bool = False
-    has_txt: bool = False
+    notes: str | None = None
+    title: str
+    can_edit: bool | None = None

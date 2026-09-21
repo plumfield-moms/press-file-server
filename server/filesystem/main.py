@@ -1,12 +1,18 @@
-from pathlib import Path
+import os
 import shutil
-from fastapi import UploadFile
-import os
-from server.notifications.main import send_email
-from dotenv import load_dotenv
 from pathlib import Path
-import os
+
 import docx2txt
+from dotenv import load_dotenv
+from fastapi import UploadFile
+
+from server.notifications.main import send_email
+
+
+def create_proof(path: str, file: UploadFile ):
+    pass
+
+# DEPRECATED
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")

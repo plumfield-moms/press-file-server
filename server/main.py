@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
     init_notifications_db()
     # Ensure Proofs directory exists
     get_proofs_dir()
-    cloudflared = subprocess.Popen([CLOUDFLARED, "tunnel", "run", "--token", TOKEN])
+    cloudflared = subprocess.Popen([CLOUDFLARED, "tunnel", "run", "--token", TOKEN])  # noqa: ASYNC220
     notify_task = asyncio.create_task(notify_ed_loop())
     try:
         yield

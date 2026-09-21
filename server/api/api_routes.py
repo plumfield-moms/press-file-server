@@ -1,106 +1,97 @@
-from fastapi import APIRouter, HTTPException, status, UploadFile, File, Depends, Header
+import warnings
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+    status,
+)
 from fastapi.responses import FileResponse
-from typing import List, Annotated
-from server.types import User, Proof
-from server.database.db import get_user
+from pydantic import ValidationError
+
+from server.database.db import get_all_files, update_proof
 from server.filesystem.main import (
-    get_all_proofs,
-    find_proof,
-    find_docx,
-    find_txt,
-    save_docx,
     advance_proof,
     check_permissions,
-    STAGES,
+    find_proof,
+    find_txt,
+    save_docx,
 )
-import os
+from server.filesystem.read import file_path
+from server.filesystem.write import write_file
+from server.state_machine.main import (
+    create_new_proof,
+    current_file_stage,
+    next_file_stage,
+)
+from server.types import Proof, User
+from server.users import CurrentUser, get_current_user
 
 router = APIRouter(prefix="/api")
 
 
-def get_current_user(
-    x_user_email: Annotated[str | None, Header()] = None,
-    cf_access_authenticated_user_email: Annotated[str | None, Header()] = None,
-) -> User:
-    email = cf_access_authenticated_user_email or x_user_email
-    print(f"[LOGIN] login attempt for email {email}")
-
-    # Dev Mode: Auto-admin if no headers are present
-    if not email and os.getenv("DEV_MODE") == "true":
-        return User(
-            email="masarikfamilymichael@gmail.com", username="michael", role="admin"
-        )
-
-    if not email:
-        print("[LOGIN] BLOCKED login - missing email.")
-        print("[LOGIN] Headers:")
-        print(f"[LOGIN]\tx_user_email: {x_user_email}")
-        print(
-            f"[LOGIN]\tcf_access_authenticated_user_email: {cf_access_authenticated_user_email}"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing auth headers"
-        )
-
-    user = get_user(email)
-    if not user:
-        print(f"[LOGIN] BLOCKED login for {email}: invaild user")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail=f"User {email} not found"
-        )
-    return user
-
-
 @router.get("/me", response_model=User)
-def me(user: User = Depends(get_current_user)):
+def me(user: User = Depends(get_current_user)):  # noqa: B008
     return user
 
 
-@router.get("/proofs", response_model=List[Proof])
-def list_proofs(user: User = Depends(get_current_user)):
-    all_proofs = get_all_proofs()
-    results = []
-    for p in all_proofs:
-        can_up, can_down = check_permissions(user.role, user.username, p["stage"])
-        has_notes = find_docx(p["id"]) is not None
-        has_txt = find_txt(p["id"]) is not None
-        results.append(
-            Proof(
-                id=p["id"],
-                stage=p["stage"],
-                can_upload=can_up,
-                can_download=can_down,
-                has_notes=has_notes,
-                has_txt=has_txt,
-            )
-        )
-    return results
+@router.post("/new")
+async def create_proof(user: CurrentUser, title: str = Form(...), file: UploadFile = File(...), ):  # noqa: B008
+    if user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail=f"{user.email} is not authorized to create proofs")
+    try:
+        await create_new_proof(title, file)
+    except Exception as e:  # noqa: BLE001
+        print("[PROOF CREATION] Error creating proof:")
+        print(f"[PROOF CREATION]\t{e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@router.get("/proofs/{proof_id}", response_model=Proof)
-def get_proof_details(proof_id: str, user: User = Depends(get_current_user)):
-    location = find_proof(proof_id)
-    if not location:
-        raise HTTPException(status_code=404, detail="Proof not found")
+@router.get("/proofs", response_model=list[Proof])
+def list_proofs(user: CurrentUser):
+    files = get_all_files()
+    if not files:
+        return []
+    resp: list[Proof] = []
+    for file in files:
+        can_edit = file.stage == user.username
+        resp.append(Proof(id=file.filepath, stage=file.stage, title=file.title, can_edit=can_edit))
+    return resp
 
-    _, stage = location
-    can_up, can_down = check_permissions(user.role, user.username, stage)
-    has_notes = find_docx(proof_id) is not None
-    has_txt = find_txt(proof_id) is not None
-    return Proof(
-        id=proof_id,
-        stage=stage,
-        can_upload=can_up,
-        can_download=can_down,
-        has_notes=has_notes,
-        has_txt=has_txt,
+
+@router.post("/proofs/{proof_id}/update")
+async def handle_update_proof(user: CurrentUser, proof_id: str, proof_json: str = Form(...),
+                              file: UploadFile = File(None), ):  # noqa: B008
+    try:
+        proof = Proof.model_validate_json(proof_json)
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=e.errors())
+    if user.username != current_file_stage(proof_id):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="You are not authorized to edit this proof at this stage")
+    next_stage = next_file_stage(proof_id)
+    await write_file(file, proof_id)
+    update_proof(proof_id=proof_id, notes=proof.notes or "", title=proof.title, stage=next_stage)
+
+
+@router.get("/proofs/{proof_id}/download")
+async def download_proof(proof_id: str, user: CurrentUser):
+    location = file_path(proof_id)
+    return FileResponse(
+        path=location, filename=f"{proof_id}.pdf", media_type="application/pdf"
     )
 
 
-@router.post("/proofs/{proof_id}/upload")
+
+@router.post("/proofs/{proof_id}")
 async def upload_proof(
-    proof_id: str, file: UploadFile = File(...), user: User = Depends(get_current_user)
+        proof_id: str, file: UploadFile = File(...), user: User = Depends(get_current_user)  # noqa: B008
 ):
+    warnings.warn("No longer used. Use `handle_update_proof()` instead", DeprecationWarning,2)
     location = find_proof(proof_id)
     current_stage = location[1] if location else "ed"
 
@@ -114,54 +105,21 @@ async def upload_proof(
     next_stage = advance_proof(proof_id, file)
     return {"message": "Success", "stage": next_stage}
 
-
-@router.get("/proofs/{proof_id}/download")
-async def download_proof(proof_id: str, user: User = Depends(get_current_user)):
-    location = find_proof(proof_id)
-    if not location:
-        raise HTTPException(status_code=404, detail="Proof not found")
-
-    path, stage = location
-    _, can_down = check_permissions(user.role, user.username, stage)
-
-    if not can_down:
-        raise HTTPException(
-            status_code=403, detail="Not authorized to download at this stage"
-        )
-
-    return FileResponse(
-        path=path, filename=f"{proof_id}.pdf", media_type="application/pdf"
-    )
-
-
 @router.post("/proofs/{proof_id}/notes")
 async def upload_notes(
-    proof_id: str, file: UploadFile = File(...), user: User = Depends(get_current_user)
+        proof_id: str, file: UploadFile = File(...), user: User = Depends(get_current_user)  # noqa: B008
 ):
     # Only Ed can upload docx notes
+    warnings.warn("Notes are now part of the database object", DeprecationWarning,2)
     if user.username != "ed" and user.role != "admin":
         raise HTTPException(status_code=403, detail="Only Ed can upload notes")
 
     save_docx(proof_id, file)
     return {"message": "Notes uploaded successfully"}
 
-
-@router.get("/proofs/{proof_id}/notes")
-async def download_notes(proof_id: str, user: User = Depends(get_current_user)):
-    path = find_docx(proof_id)
-    if not path:
-        raise HTTPException(status_code=404, detail="Notes not found")
-
-    # Simple rule: anyone with access to the proof can see the notes
-    return FileResponse(
-        path=path,
-        filename=f"{proof_id}.docx",
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    )
-
-
 @router.get("/proofs/{proof_id}/txt")
-async def download_txt(proof_id: str, user: User = Depends(get_current_user)):
+async def download_txt(proof_id: str, user: User = Depends(get_current_user)):  # noqa: B008
+    warnings.warn("Notes are now part of the database object", DeprecationWarning,2)
     path = find_txt(proof_id)
     if not path:
         raise HTTPException(status_code=404, detail="Plaintext notes not found")

@@ -16,7 +16,11 @@ SENDER_EMAIL = "plumfieldmoms@gmail.com"
 APP_PASSWORD = os.getenv("GMAIL_PASSWORD")
 ED_EMAIL = os.getenv("ED_EMAIL")
 
+def notify_user():
+    pass
 
+
+# DEPRECATED
 def send_email(to, proof: str, name: str):
     if APP_PASSWORD == None:
         raise ValueError("Missing Gmail Password")
