@@ -1,17 +1,20 @@
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+# import asyncio
 import os
-from pathlib import Path
-from dotenv import load_dotenv
-from contextlib import asynccontextmanager
-from server.api.api_routes import router as api_router
-from server.database.db import user_db_setup, state_db_setup
-from server.database.notifications import init_notifications_db
-from server.filesystem.main import get_proofs_dir
 import subprocess
-from server.notifications.main import notify_ed_loop
-import asyncio
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from dotenv import load_dotenv
+from fastapi import FastAPI
+
+# from fastapi.responses import FileResponse
+# from fastapi.staticfiles import StaticFiles
+from server.api.api_routes import router as api_router
+from server.database.db import state_db_setup, user_db_setup
+
+# from server.database.notifications import init_notifications_db
+# from server.filesystem.main import get_proofs_dir
+# from server.notifications.main import notify_ed_loop
 from server.server_mcp.main import mcp_app
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -27,22 +30,22 @@ if not TOKEN and not DEV:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialize Databases
-    user_db_setup()
+    # user_db_setup()
     state_db_setup()
-    init_notifications_db()
+    # init_notifications_db()
     # Ensure Proofs directory exists
-    get_proofs_dir()
+    # get_proofs_dir()
     cloudflared = subprocess.Popen([CLOUDFLARED, "tunnel", "run", "--token", TOKEN])  # noqa: ASYNC220
-    notify_task = asyncio.create_task(notify_ed_loop())
+    # notify_task = asyncio.create_task(notify_ed_loop())
     try:
         yield
     finally:
         cloudflared.terminate()
-        notify_task.cancel()
-        try:
-            await notify_task
-        except asyncio.CancelledError:
-            pass
+        # notify_task.cancel()
+        # try:
+        #     await notify_task
+        # except asyncio.CancelledError:
+        #     pass
         try:
             cloudflared.wait(timeout=10)
         except subprocess.TimeoutExpired:
