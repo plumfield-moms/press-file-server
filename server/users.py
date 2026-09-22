@@ -1,3 +1,4 @@
+import os
 from typing import Annotated, Literal, TypedDict
 
 from fastapi import Depends, Header, HTTPException
@@ -30,7 +31,7 @@ USERS: dict[str, UserRecord] = {
     },
     "sara": {
         "name": "Sara",
-        "email": "plumfieldlivinglibrary@gmail.com",
+        "email": "plumfieldmoms@gmail.com",
         "role": "admin"
     },
     "greta": {
@@ -79,20 +80,24 @@ def get_current_user(
 
     """
     email = cf_access_authenticated_user_email or x_user_email
-    print(f"[LOGIN] login attempt for email {email}")
-
-    if not email:
-        print("[LOGIN] BLOCKED login - missing email.")
-        print("[LOGIN] Headers:")
-        print(f"[LOGIN]\tx_user_email: {x_user_email}")
-        print(
-            f"[LOGIN]\tcf_access_authenticated_user_email: {cf_access_authenticated_user_email}"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing auth headers"
-        )
-
-    user = get_user(email)
+    
+    if os.getenv("ENV", None) != "localhost":
+        if not email:
+            print(f"[LOGIN] login attempt for email {email}")
+            print("[LOGIN] BLOCKED login - missing email.")
+            print("[LOGIN] Headers:")
+            print(f"[LOGIN]\tx_user_email: {x_user_email}")
+            print(
+                f"[LOGIN]\tcf_access_authenticated_user_email: {cf_access_authenticated_user_email}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing auth headers"
+            )
+    
+        user = get_user(email)
+    else:
+        print("[DEV LOGIN] login attempt for email masarikfamilymargaret@gmail.com")
+        user = get_user("masarikfamilymargaret@gmail.com")
     if not user:
         print(f"[LOGIN] BLOCKED login for {email}: invalid user")
         raise HTTPException(
