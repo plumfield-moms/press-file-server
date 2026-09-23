@@ -22,6 +22,7 @@ load_dotenv(BASE_DIR / ".env")
 CLOUDFLARED = "/opt/homebrew/bin/cloudflared"
 DEV = True
 TOKEN = os.getenv("TUNNEL_TOKEN") or ""
+DEV = os.getenv("ENV") == "localhost"
 if not TOKEN and not DEV:
 
     raise RuntimeError("Missing TUNNEL_TOKEN")
@@ -29,27 +30,19 @@ if not TOKEN and not DEV:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize Databases
-    # user_db_setup()
+    if DEV: print("INFO:\tUsing DEV mode without Cloudflare")
     state_db_setup()
-    # init_notifications_db()
-    # Ensure Proofs directory exists
-    # get_proofs_dir()
-    cloudflared = subprocess.Popen([CLOUDFLARED, "tunnel", "run", "--token", TOKEN])  # noqa: ASYNC220
-    # notify_task = asyncio.create_task(notify_ed_loop())
+    cloudflared = None
+    if not DEV: cloudflared = subprocess.Popen([CLOUDFLARED, "tunnel", "run", "--token", TOKEN])  # noqa: ASYNC220
     try:
         yield
     finally:
-        cloudflared.terminate()
-        # notify_task.cancel()
-        # try:
-        #     await notify_task
-        # except asyncio.CancelledError:
-        #     pass
-        try:
-            cloudflared.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            cloudflared.kill()
+        if cloudflared:
+            cloudflared.terminate()
+            try:
+                cloudflared.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                cloudflared.kill()
 
 
 app = FastAPI(lifespan=lifespan)
