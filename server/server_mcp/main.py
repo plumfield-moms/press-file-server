@@ -1,8 +1,8 @@
 from typing import Literal
 
 from fastmcp import FastMCP
+
 from server.database.db import get_all_files
-from server.types import State
 
 mcp = FastMCP("Plumfield Press File Server")
 

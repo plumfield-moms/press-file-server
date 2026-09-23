@@ -1,5 +1,3 @@
-import warnings
-
 from fastapi import (
     APIRouter,
     Depends,
@@ -13,13 +11,6 @@ from fastapi.responses import FileResponse
 from pydantic import ValidationError
 
 from server.database.db import get_all_files, update_proof
-from server.filesystem.main import (
-    advance_proof,
-    check_permissions,
-    find_proof,
-    find_txt,
-    save_docx,
-)
 from server.filesystem.read import file_path
 from server.filesystem.write import write_file
 from server.state_machine.main import (
@@ -80,52 +71,8 @@ async def handle_update_proof(user: CurrentUser, proof_id: str, proof_json: str 
 
 @router.get("/proofs/{proof_id}/download")
 async def download_proof(proof_id: str, user: CurrentUser):
+    print(f"[DOWNLOAD] User: {user.name} is attempting to download proof {proof_id}")
     location = file_path(proof_id)
     return FileResponse(
         path=location, filename=f"{proof_id}.pdf", media_type="application/pdf"
-    )
-
-
-
-@router.post("/proofs/{proof_id}")
-async def upload_proof(
-        proof_id: str, file: UploadFile = File(...), user: User = Depends(get_current_user)  # noqa: B008
-):
-    warnings.warn("No longer used. Use `handle_update_proof()` instead", DeprecationWarning,2)
-    location = find_proof(proof_id)
-    current_stage = location[1] if location else "ed"
-
-    can_up, _ = check_permissions(user.role, user.username, current_stage)
-    if not can_up:
-        raise HTTPException(
-            status_code=403,
-            detail=f"User {user.username} not authorized to upload at stage {current_stage}",
-        )
-
-    next_stage = advance_proof(proof_id, file)
-    return {"message": "Success", "stage": next_stage}
-
-@router.post("/proofs/{proof_id}/notes")
-async def upload_notes(
-        proof_id: str, file: UploadFile = File(...), user: User = Depends(get_current_user)  # noqa: B008
-):
-    # Only Ed can upload docx notes
-    warnings.warn("Notes are now part of the database object", DeprecationWarning,2)
-    if user.username != "ed" and user.role != "admin":
-        raise HTTPException(status_code=403, detail="Only Ed can upload notes")
-
-    save_docx(proof_id, file)
-    return {"message": "Notes uploaded successfully"}
-
-@router.get("/proofs/{proof_id}/txt")
-async def download_txt(proof_id: str, user: User = Depends(get_current_user)):  # noqa: B008
-    warnings.warn("Notes are now part of the database object", DeprecationWarning,2)
-    path = find_txt(proof_id)
-    if not path:
-        raise HTTPException(status_code=404, detail="Plaintext notes not found")
-
-    return FileResponse(
-        path=path,
-        filename=f"{proof_id}.txt",
-        media_type="text/plain",
     )

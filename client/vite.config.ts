@@ -2,14 +2,12 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
-import {MockServer} from "./src/plugins/MockServer";
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-      // MockServer()
   ],
   build:{
     outDir: "../dist",

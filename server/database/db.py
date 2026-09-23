@@ -1,35 +1,14 @@
 import sqlite3
-import warnings
+from collections.abc import Generator
 from contextlib import contextmanager
-from logging import warning
 from pathlib import Path
 from sqlite3 import Connection
-from typing import Any, Generator
+from typing import Any
 
-from server.types import State, User
-from server.users import USERS
+from server.types import State
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-USER_DB_PATH = Path(__file__).with_name("users.sqlite")
 STATE_DB_PATH = Path(__file__).with_name("state.sqlite")
-
-db_users = [(v["email"], k, v["role"]) for k, v in USERS.items()]
-
-
-
-
-@contextmanager
-def user_db_con() -> Generator[Connection, Any]:
-    warnings.warn("This database is no longer used. Use the USERS object instead", DeprecationWarning,2)
-    conn = sqlite3.connect(USER_DB_PATH)
-    try:
-        yield conn
-        conn.commit()
-    except:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
 
 @contextmanager
 def state_db_con() -> Generator[Connection, Any]:
@@ -49,35 +28,12 @@ def state_db_con() -> Generator[Connection, Any]:
     finally:
         conn.close()
 
-
-def user_db_setup() -> None:
-    warnings.warn("This database is no longer used. Use the USERS object instead",DeprecationWarning,2)
-    with user_db_con() as conn:
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, username TEXT, role TEXT);"
-        )
-        cursor = conn.cursor()
-        cursor.executemany("INSERT OR REPLACE INTO users VALUES (?,?,?)", db_users)
-
 def state_db_setup() -> None:
     """Initial Database setup"""
     with state_db_con() as conn:
         conn.execute(
             "CREATE TABLE IF NOT EXISTS state (filepath TEXT PRIMARY KEY, title TEXT, owner TEXT,notes TEXT);"
         )
-
-
-# def get_user(email: str) -> User | None:
-#     with user_db_con() as conn:
-#         cursor = conn.cursor()
-#         cursor.execute(
-#             "SELECT email, username, role FROM users WHERE email = ?;", (email,)
-#         )
-#         user = cursor.fetchone()
-#         # conn.close()
-#         if user:
-#             return User(email=user[0], username=user[1], role=user[2])
-#         return None
 
 def get_all_files() -> list[State] | None:
     """Lists all proofs in the database
