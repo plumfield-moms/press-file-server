@@ -55,6 +55,11 @@ export function MockServer(): Plugin{
                      return;
 
                  }
+                 if(req.url && req.url.match(/^\/api\/proof\/([^/]+)\/update$/)){
+                     res.statusCode = 200
+                     console.log("Got a request!")
+                     return;
+                 }
 
                  // default no-match
                  next()

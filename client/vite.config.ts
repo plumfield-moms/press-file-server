@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-      MockServer()
+      // MockServer()
   ],
   build:{
     outDir: "../dist",

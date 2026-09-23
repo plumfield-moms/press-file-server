@@ -25,6 +25,6 @@ export function ProofColumns({proofs, setActive, stage}:{proofs: ProofArray, set
         </div>
     </div>
     )
-    return <div className="w-full sm:w-100 flex flex-col rounded-md  bg-primary text-background p-4 h-screen overflow-y-auto scroll-fade">{Sections}</div>
+    return <div className="w-full md:w-150 flex flex-col rounded-md  bg-primary text-background p-4 h-screen overflow-y-auto scroll-fade">{Sections}</div>
 
 }

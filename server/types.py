@@ -6,6 +6,7 @@ class State(BaseModel):
     filepath: str
     stage: str
     title: str
+    notes: str | None = None
 
 class Roles(Enum):
     USER = "user"

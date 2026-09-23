@@ -86,12 +86,12 @@ def get_all_files() -> list[State] | None:
     """
     with state_db_con() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT filepath, title, state from state;")
+        cursor.execute("SELECT filepath, title, state, notes from state;")
         states = cursor.fetchall()
         if states:
             final = []
             for state in states:
-                final.append(State(filepath=state[0], title=state[1], stage=state[2]))
+                final.append(State(filepath=state[0], title=state[1], stage=state[2], notes=state[3]))
             return final
         return None
 
@@ -105,10 +105,10 @@ def get_file(proof_id: str)->State | None:
 
     with state_db_con() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT title, state from state")
+        cursor.execute("SELECT title, state, notes from state WHERE filepath= ?",(proof_id,))
         state = cursor.fetchone()
         if state:
-            return State(title=state[0], stage=state[1], filepath=proof_id)
+            return State(title=state[0], stage=state[1], filepath=proof_id, notes=state[2])
         return None
 
 def insert_file(proof_id: str, title: str, stage: str):
@@ -139,4 +139,14 @@ def update_proof(proof_id: str, notes: str, title: str, stage: str):
     """
     with state_db_con() as conn:
         cursor = conn.cursor()
-        cursor.execute("UPSERT INTO state (filepath, title, notes, state) VALUES (?,?,?,?);", (proof_id, title, notes, stage,))
+        cursor.execute(
+            """
+                       INSERT INTO state (filepath, title, notes, state)
+                       VALUES (?, ?, ?, ?)
+                       ON CONFLICT(filepath) DO UPDATE SET
+                                                           title = excluded.title,
+                                                           notes = excluded.notes,
+                                                           state = excluded.state;
+                       """,
+            (proof_id, title, notes, stage),
+        )

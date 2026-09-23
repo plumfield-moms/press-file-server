@@ -59,7 +59,7 @@ def list_proofs(user: CurrentUser):
     resp: list[Proof] = []
     for file in files:
         can_edit = file.stage == user.username
-        resp.append(Proof(id=file.filepath, stage=file.stage, title=file.title, can_edit=can_edit))
+        resp.append(Proof(id=file.filepath, stage=file.stage, title=file.title, can_edit=can_edit, notes=file.notes))
     return resp
 
 
