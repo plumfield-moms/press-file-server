@@ -32,7 +32,7 @@ def state_db_setup() -> None:
     """Initial Database setup"""
     with state_db_con() as conn:
         conn.execute(
-            "CREATE TABLE IF NOT EXISTS state (filepath TEXT PRIMARY KEY, title TEXT, owner TEXT,notes TEXT);"
+            "CREATE TABLE IF NOT EXISTS state (filepath TEXT PRIMARY KEY, title TEXT, state TEXT,notes TEXT);"
         )
 
 def get_all_files() -> list[State] | None:

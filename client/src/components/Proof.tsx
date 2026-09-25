@@ -7,11 +7,28 @@ import { useState} from "react";
 import {toast} from "@/components/ui/toast.tsx";
 import {Badge} from "@/components/ui/badge.tsx";
 import {Spinner} from "@/components/ui/spinner.tsx";
+import {ButtonGroup} from "@/components/ui/button-group.tsx";
 
 export function ProofCard( {proof, handlers, edit}:{proof: ProofUpdate, handlers: ProofHandlers, edit: boolean,}){
     const [file, setFile] = useState<File | null>(null);
     const formattedStage = proof.stage[0].toUpperCase() + proof.stage.slice(1)
     const [loading, setLoading] = useState(false)
+    async function share(){
+
+        const url = "https://server.plumfieldpress.com/?id=" + proof.id
+        try {
+          await navigator.clipboard.writeText(url);
+          toast.add({
+              description:"Copied to clipboard!"
+          })
+        } catch (err) {
+          toast.add({
+              type:"error",
+              description: "Failed to copy: " + String(err)
+          })
+        }
+
+    }
 
     async function handleSubmit() {
         if (!file){
@@ -34,7 +51,12 @@ export function ProofCard( {proof, handlers, edit}:{proof: ProofUpdate, handlers
             <CardTitle className="text-xl">
                 {proof.title}
             </CardTitle>
-            <CardAction><Button render={<a href={`/api/proofs/${proof.id}/download`}>Download</a>}/></CardAction>
+            <CardAction>
+                <ButtonGroup>
+                <Button render={<a href={`/api/proofs/${proof.id}/download`}>Download</a>}/>
+                    <Button onClick={share}>Share</Button>
+                </ButtonGroup>
+                </CardAction>
         </CardHeader>
         <CardContent>
             <div className={"flex flex-row gap-2 pb-2 items-center"}>
