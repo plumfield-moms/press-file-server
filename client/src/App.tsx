@@ -2,7 +2,7 @@ import {ProofArrayModel, ProofHandlers, ProofUpdate, UserModel} from "@/types";
 import {Spinner} from "@/components/ui/spinner.tsx";
 import {toast} from "@/components/ui/toast.tsx";
 import {useQuery,useQueryClient} from "@tanstack/react-query";
-import {useState, useEffect} from "react";
+import {useState, useEffect, useRef} from "react";
 import {ProofColumns} from "@/components/ProofColumns.tsx";
 import {ProofCard} from "@/components/Proof.tsx";
 import {Nav} from "@/components/Nav.tsx";
@@ -35,19 +35,23 @@ function useProofs(){
 function App() {
   const queryClient = useQueryClient();
   const {data: user, error, isLoading} = useUser()
-  const {data: proofs, error: proofError} = useProofs()
+  const {data: proofs, error: proofError, isLoading: isLoadingProof} = useProofs()
   const [currentTitle, setCurrentTitle] = useState("")
   const [currentNotes, setCurrentNotes] = useState("")
   const [proofID, setProofID] = useState("")
   const [active, setActive] = useState<ProofUpdate | null>()
+  const handledUrlProof = useRef(false);
 
-  useEffect(()=>{
-    const params = new URLSearchParams(window.location.search);
-    const passedProof = params.get("id")
-    if(passedProof){
-      handleActive(passedProof)
-    }
-  })
+useEffect(() => {
+  if (handledUrlProof.current || isLoadingProof) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const proofId = params.get('id');
+  if (proofId) {
+    handleActive(proofId);
+  }
+  handledUrlProof.current = true;
+}, [proofs]);
 
   useEffect(() => {
   if (!proofID || !proofs) return;
