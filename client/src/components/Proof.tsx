@@ -31,7 +31,7 @@ export function ProofCard( {proof, handlers, edit}:{proof: ProofUpdate, handlers
     };
     return <Card className="w-full h-full">
         <CardHeader>
-            <CardTitle>
+            <CardTitle className="text-xl">
                 {proof.title}
             </CardTitle>
             <CardAction><Button render={<a href={`/api/proofs/${proof.id}/download`}>Download</a>}/></CardAction>
@@ -53,8 +53,9 @@ export function ProofCard( {proof, handlers, edit}:{proof: ProofUpdate, handlers
             />
 
         </CardContent>
-        <CardFooter>
+        <CardFooter className="gap-1">
             <Button onClick={handleSubmit} disabled={!edit}>Submit</Button>
+            <Button variant="outline" onClick={handlers.close}>Cancel</Button>
             {loading&&<Spinner/>}
         </CardFooter>
     </Card>

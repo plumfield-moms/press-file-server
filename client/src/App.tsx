@@ -6,6 +6,7 @@ import {useState, useEffect} from "react";
 import {ProofColumns} from "@/components/ProofColumns.tsx";
 import {ProofCard} from "@/components/Proof.tsx";
 import {Nav} from "@/components/Nav.tsx";
+import {Card, CardDescription, CardHeader} from "@/components/ui/card.tsx";
 
 function useUser(){
   return useQuery({
@@ -38,6 +39,15 @@ function App() {
   const [currentTitle, setCurrentTitle] = useState("")
   const [currentNotes, setCurrentNotes] = useState("")
   const [proofID, setProofID] = useState("")
+  const [active, setActive] = useState<ProofUpdate | null>()
+
+  useEffect(()=>{
+    const params = new URLSearchParams(window.location.search);
+    const passedProof = params.get("id")
+    if(passedProof){
+      handleActive(passedProof)
+    }
+  })
 
   useEffect(() => {
   if (!proofID || !proofs) return;
@@ -57,8 +67,6 @@ function App() {
   });
 }, [proofs, proofID]);
 
-  const [active, setActive] = useState<ProofUpdate | null>()
-
   // Handles the active state of the proof
   function handleActive(active: string){
   const exists = proofs?.some((p) => p.id === active)
@@ -67,6 +75,11 @@ function App() {
     return
   }
   setProofID(active)
+}
+
+function handleClose(){
+    setActive(null)
+    setProofID("")
 }
 // Handles submitting an update
   async function handleSubmit(file: File){
@@ -103,6 +116,7 @@ function App() {
   // const for passing handlers to the proof card
 const handlers: ProofHandlers = {
     submit: handleSubmit,
+  close: handleClose
   // download: handleDownload
 }
 if(error){
@@ -119,7 +133,16 @@ if(proofError){
   }
   if(!user){
     // TODO: Add unauthorized state
-    return <div>Error</div>
+    return <div className="flex w-full h-screen items-center justify-center">
+      <Card>
+        <CardHeader>
+          Unauthorized
+        </CardHeader>
+        <CardDescription>
+          You are not authorized to access this page
+        </CardDescription>
+      </Card>
+    </div>
   }
   const activeProof: ProofUpdate | null = active ? {
   ...active,
@@ -133,7 +156,7 @@ return ( <>
 
     <div className={"flex flex-col md:flex-row gap-3 p-4"}>
   {activeProof?
-      <ProofCard key={activeProof.id} proof={activeProof} handlers={handlers} edit={activeProof.can_edit}/>:<div className="w-full md:h-screen h-85 rounded-md  flex items-center justify-center border-2 border-plum-light border-dashed"><span className="text-center">No Proof Selected</span> </div>}
+      <ProofCard key={activeProof.id} proof={activeProof} handlers={handlers} edit={activeProof.can_edit}/>:<div className="w-full md:h-[90vh] h-85 rounded-md  flex items-center justify-center border-2 border-plum-light border-dashed"><span className="text-center">No Proof Selected</span> </div>}
   <ProofColumns proofs={proofs} setActive={handleActive} stage={user.username}/>
 
   </div>
