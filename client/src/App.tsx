@@ -5,6 +5,7 @@ import {useQuery,useQueryClient} from "@tanstack/react-query";
 import {useState, useEffect} from "react";
 import {ProofColumns} from "@/components/ProofColumns.tsx";
 import {ProofCard} from "@/components/Proof.tsx";
+import {Nav} from "@/components/Nav.tsx";
 
 function useUser(){
   return useQuery({
@@ -79,7 +80,7 @@ function App() {
     if (file) {
         formData.append("file", file);
     }
-    const res = await fetch(`api/proofs/${proofID}/update`, {
+    const res = await fetch(`/api/proofs/${proofID}/update`, {
         method: "POST",
         body: formData,
     });
@@ -127,12 +128,16 @@ if(proofError){
 } : null;
 if(proofs)
 
-return <div className={"flex flex-col md:flex-row gap-3 p-4"}>
+return ( <>
+  <Nav admin={user.role == "admin"} queryClient={queryClient}/>
+
+    <div className={"flex flex-col md:flex-row gap-3 p-4"}>
   {activeProof?
-      <ProofCard key={activeProof.id} admin={user.role == "admin"} proof={activeProof} handlers={handlers} edit={activeProof.can_edit}/>:<div className="w-full md:h-screen h-175 rounded-md  flex items-center justify-center border-2 border-plum-light border-dashed"><span className="text-center">No Proof Selected</span> </div>}
+      <ProofCard key={activeProof.id} proof={activeProof} handlers={handlers} edit={activeProof.can_edit}/>:<div className="w-full md:h-screen h-85 rounded-md  flex items-center justify-center border-2 border-plum-light border-dashed"><span className="text-center">No Proof Selected</span> </div>}
   <ProofColumns proofs={proofs} setActive={handleActive} stage={user.username}/>
 
   </div>
+</>)
 
 }
 

@@ -96,8 +96,8 @@ def get_current_user(
     
         user = get_user(email)
     else:
-        print("[DEV LOGIN] login attempt for email masarikfamilymargaret@gmail.com")
-        user = get_user("masarikfamilymargaret@gmail.com")
+        print("[DEV LOGIN] login attempt for email plumfieldmoms@gmail.com")
+        user = get_user("plumfieldmoms@gmail.com")
     if not user:
         print(f"[LOGIN] BLOCKED login for {email}: invalid user")
         raise HTTPException(

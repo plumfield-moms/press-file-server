@@ -29,5 +29,5 @@ export type ProofUpdate =  Proof & {
 }
 export interface ProofHandlers {
   // download: ()=> void
-  submit: (file: File) => void
+  submit: (file: File) => Promise<void>
 }

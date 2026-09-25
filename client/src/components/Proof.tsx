@@ -6,13 +6,14 @@ import {Textarea} from "@/components/ui/textarea.tsx";
 import { useState} from "react";
 import {toast} from "@/components/ui/toast.tsx";
 import {Badge} from "@/components/ui/badge.tsx";
+import {Spinner} from "@/components/ui/spinner.tsx";
 
-export function ProofCard( {admin = false, proof, handlers, edit}:{admin: boolean, proof: ProofUpdate, handlers: ProofHandlers, edit: boolean,}){
+export function ProofCard( {proof, handlers, edit}:{proof: ProofUpdate, handlers: ProofHandlers, edit: boolean,}){
     const [file, setFile] = useState<File | null>(null);
-    const [title, setTitle] = useState<null | string>()
     const formattedStage = proof.stage[0].toUpperCase() + proof.stage.slice(1)
+    const [loading, setLoading] = useState(false)
 
-    const handleSubmit = () => {
+    async function handleSubmit() {
         if (!file){
             toast.add({
                 type:"error",
@@ -20,18 +21,18 @@ export function ProofCard( {admin = false, proof, handlers, edit}:{admin: boolea
             })
             return
         }
-        if(!title){
-            proof.setTitle(proof.title)
-        }else{
-            proof.setTitle(title)
-        }
-        handlers.submit(file);
+        // if(!title){
+        //     proof.setTitle(proof.title)
+        // }else{
+        //     proof.setTitle(title)
+        // }
+        setLoading(true)
+        await handlers.submit(file).finally(()=>setLoading(false));
     };
     return <Card className="w-full h-full">
         <CardHeader>
-            <CardTitle>{admin?
-                <Input value={proof.title} onChange={(e)=> setTitle(e.target.value)}/>
-                :proof.title}
+            <CardTitle>
+                {proof.title}
             </CardTitle>
             <CardAction><Button render={<a href={`/api/proofs/${proof.id}/download`}>Download</a>}/></CardAction>
         </CardHeader>
@@ -42,18 +43,19 @@ export function ProofCard( {admin = false, proof, handlers, edit}:{admin: boolea
             <Badge>{formattedStage}</Badge>
             </div>
             <h3 className="text-lg">Notes</h3>
-            <Textarea disabled={!edit && !admin} value={proof.notes ?? ""} onChange={(e)=>proof.setNotes(e.target.value)}></Textarea>
+            <Textarea disabled={!edit} value={proof.notes ?? ""} onChange={(e)=>proof.setNotes(e.target.value)}></Textarea>
             <h3 className="text-lg">Upload</h3>
             <Input
                 type="file"
                 accept="application/pdf"
-                disabled={!edit && !admin}
+                disabled={!edit || loading}
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
 
         </CardContent>
         <CardFooter>
-            <Button onClick={handleSubmit} disabled={!edit && !admin}>Submit</Button>
+            <Button onClick={handleSubmit} disabled={!edit}>Submit</Button>
+            {loading&&<Spinner/>}
         </CardFooter>
     </Card>
 }
