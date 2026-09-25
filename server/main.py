@@ -27,7 +27,8 @@ async def lifespan(app: FastAPI):
     cloudflared = None
     if not DEV: cloudflared = subprocess.Popen([CLOUDFLARED, "tunnel", "run", "--token", TOKEN])  # noqa: ASYNC220
     try:
-        yield
+        async with mcp_app.lifespan(app):
+            yield
     finally:
         if cloudflared:
             cloudflared.terminate()
@@ -37,7 +38,7 @@ async def lifespan(app: FastAPI):
                 cloudflared.kill()
 app = FastAPI(lifespan=lifespan)
 app.include_router(api_router)
-app.mount("/mcp", mcp_app)
+app.mount("/api", mcp_app)
 
 app.frontend("/", directory="dist")
 
