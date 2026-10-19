@@ -9,9 +9,11 @@ class State(BaseModel):
     title: str
     notes: str | None = None
 
+
 class Roles(Enum):
     USER = "user"
     ADMIN = "admin"
+
 
 class User(BaseModel):
     email: str

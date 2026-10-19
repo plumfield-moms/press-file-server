@@ -14,36 +14,20 @@ class UserRecord(TypedDict):
 
 
 USERS: dict[str, UserRecord] = {
-    "kristi": {
-        "name": "Kristi",
-        "email": "tarpfarmer@gmail.com",
-        "role": "user"
-    },
-    "ed": {
-        "name": "Ed",
-        "email": "garboczi@msn.com",
-        "role": "user"
-    },
-    "diane": {
-        "name": "Diane",
-        "email": "dianependergraft@hotmail.com",
-        "role": "user"
-    },
-    "sara": {
-        "name": "Sara",
-        "email": "plumfieldmoms@gmail.com",
-        "role": "admin"
-    },
+    "kristi": {"name": "Kristi", "email": "tarpfarmer@gmail.com", "role": "user"},
+    "ed": {"name": "Ed", "email": "garboczi@msn.com", "role": "user"},
+    "diane": {"name": "Diane", "email": "dianependergraft@hotmail.com", "role": "user"},
+    "sara": {"name": "Sara", "email": "plumfieldmoms@gmail.com", "role": "admin"},
     "greta": {
         "name": "Greta",
         "email": "masarikfamilymargaret@gmail.com",
-        "role": "user"
+        "role": "user",
     },
     "michael": {
         "name": "Michael",
         "email": "masarikfamilymichael@gmail.com",
-        "role": "admin"
-    }
+        "role": "admin",
+    },
 }
 
 
@@ -66,8 +50,8 @@ def get_user(email: str) -> User | None:
 
 
 def get_current_user(
-        x_user_email: Annotated[str | None, Header()] = None,
-        cf_access_authenticated_user_email: Annotated[str | None, Header()] = None,
+    x_user_email: Annotated[str | None, Header()] = None,
+    cf_access_authenticated_user_email: Annotated[str | None, Header()] = None,
 ) -> User:
     """Retrieves the current user based on the Cloudflare Headers
     :param x_user_email: One possible header value
@@ -80,7 +64,7 @@ def get_current_user(
 
     """
     email = cf_access_authenticated_user_email or x_user_email
-    
+
     if os.getenv("ENV", None) != "localhost":
         if not email:
             print(f"[LOGIN] login attempt for email {email}")
@@ -93,7 +77,7 @@ def get_current_user(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing auth headers"
             )
-    
+
         user = get_user(email)
     else:
         print("[DEV LOGIN] login attempt for email plumfieldmoms@gmail.com")

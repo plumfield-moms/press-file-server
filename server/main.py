@@ -20,12 +20,15 @@ DEV = os.getenv("ENV") == "localhost"
 if not TOKEN and not DEV:
     raise RuntimeError("Missing TUNNEL_TOKEN")
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if DEV: print("INFO:\tUsing DEV mode without Cloudflare")
+    if DEV:
+        print("INFO:\tUsing DEV mode without Cloudflare")
     state_db_setup()
     cloudflared = None
-    if not DEV: cloudflared = subprocess.Popen([CLOUDFLARED, "tunnel", "run", "--token", TOKEN])  # noqa: ASYNC220
+    if not DEV:
+        cloudflared = subprocess.Popen([CLOUDFLARED, "tunnel", "run", "--token", TOKEN])  # noqa: ASYNC220
     try:
         async with mcp_app.lifespan(app):
             yield
@@ -36,6 +39,8 @@ async def lifespan(app: FastAPI):
                 cloudflared.wait(timeout=10)
             except subprocess.TimeoutExpired:
                 cloudflared.kill()
+
+
 app = FastAPI(lifespan=lifespan)
 app.include_router(api_router)
 app.mount("/api", mcp_app)
@@ -44,4 +49,5 @@ app.frontend("/", directory="dist")
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=3001)
