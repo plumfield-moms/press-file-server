@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 
 from server.api.api_routes import router as api_router
-from server.database.db import state_db_setup
+from server.database.db import state_db_setup, vault_db_setup
 from server.server_mcp.main import mcp_app
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -26,6 +26,7 @@ async def lifespan(app: FastAPI):
     if DEV:
         print("INFO:\tUsing DEV mode without Cloudflare")
     state_db_setup()
+    vault_db_setup()
     cloudflared = None
     if not DEV:
         cloudflared = subprocess.Popen([CLOUDFLARED, "tunnel", "run", "--token", TOKEN])  # noqa: ASYNC220

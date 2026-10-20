@@ -20,8 +20,10 @@ from server.state_machine.main import (
 )
 from server.types import Proof, User
 from server.users import CurrentUser, get_current_user
+from server.vault.vault_router import router as vault
 
 router = APIRouter(prefix="/api")
+router.include_router(vault)
 
 
 @router.get("/me", response_model=User)

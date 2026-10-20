@@ -1,9 +1,11 @@
+import datetime
 import sqlite3
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 from sqlite3 import Connection
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from server.types import State
 
@@ -34,7 +36,17 @@ def state_db_setup() -> None:
     """Initial Database setup"""
     with state_db_con() as conn:
         conn.execute(
+            # sql
             "CREATE TABLE IF NOT EXISTS state (filepath TEXT PRIMARY KEY, title TEXT, state TEXT,notes TEXT);"
+        )
+
+
+def vault_db_setup() -> None:
+    """Initial Store Setup"""
+    with state_db_con() as conn:
+        conn.execute(
+            # sql
+            "CREATE TABLE IF NOT EXISTS vault (store_id TEXT PRIMARY KEY, title TEXT NOT NULL, last_edited_time TEXT NOT NULL); "
         )
 
 
@@ -125,4 +137,15 @@ def update_proof(proof_id: str, notes: str, title: str, stage: str):
                                                            state = excluded.state;
                        """,
             (proof_id, title, notes, stage),
+        )
+
+
+def insert_vault_store(store_id: str, title: str):
+    now = datetime.datetime.now(tz=ZoneInfo("America/Chicago")).date().isoformat()
+    with state_db_con() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            # sql
+            "INSERT INTO vault (store_id, title, last_edited_time) VALUES (?,?,?)",
+            [store_id, title, now],
         )
