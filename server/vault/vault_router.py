@@ -1,8 +1,10 @@
 from uuid import uuid4
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 
 from server.database.db import insert_vault_store, list_vault_stores, update_vault_store
+from server.filesystem.read import store_path
 from server.filesystem.write import write_store
 from server.users import CurrentUser
 
@@ -57,3 +59,12 @@ async def update_store(
         print("[STORE CREATION] Error creating store:")
         print(f"[STRORE CREATION]\t{e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@router.get("/{store_id}/download")
+async def download_proof(store_id: str, user: CurrentUser):
+    print(f"[DOWNLOAD] User: {user.name} is attempting to download proof {store_id}")
+    location = store_path(store_id)
+    return FileResponse(
+        path=location, filename=f"{store_id}.pdf", media_type="application/pdf"
+    )
