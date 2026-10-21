@@ -70,5 +70,5 @@ async def create_new_proof(title: str, file: UploadFile):
     :returns: None
     """
     FILE_ID = str(uuid.uuid4())
-    insert_file(FILE_ID, title, ORDER[0])
     await write_file(file, FILE_ID)
+    insert_file(FILE_ID, title, ORDER[0])
