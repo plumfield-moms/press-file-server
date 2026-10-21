@@ -1,0 +1,12 @@
+[
+  {
+    "label": "Lazygit",
+    "command": "lazygit",
+    "reveal": "always",
+  },
+  {
+    "label": "Sqlite TUI",
+    "command": "sqlit",
+    "reveal": "always",
+  },
+]
