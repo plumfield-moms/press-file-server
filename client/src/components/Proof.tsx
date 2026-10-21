@@ -60,47 +60,51 @@ export function ProofCard({
 		await handlers.submit(file).finally(() => setLoading(false));
 	}
 	return (
-		<Card className="w-full h-full">
-			<CardHeader>
-				<CardTitle className="text-xl">{proof.title}</CardTitle>
-				<CardAction>
-					<ButtonGroup>
-						<Button
-							render={<a href={`/api/proofs/${proof.id}/download`}>Download</a>}
-						/>
-						<Button onClick={share}>Share</Button>
-					</ButtonGroup>
-				</CardAction>
-			</CardHeader>
-			<CardContent>
-				<div className={"flex flex-row gap-2 pb-2 items-center"}>
-					<h3 className="text-lg text-center">Stage:</h3>
+		<div className="h-fit w-full">
+			<Card className="">
+				<CardHeader>
+					<CardTitle className="text-xl">{proof.title}</CardTitle>
+					<CardAction>
+						<ButtonGroup>
+							<Button
+								render={
+									<a href={`/api/proofs/${proof.id}/download`}>Download</a>
+								}
+							/>
+							<Button onClick={share}>Share</Button>
+						</ButtonGroup>
+					</CardAction>
+				</CardHeader>
+				<CardContent>
+					<div className={"flex flex-row gap-2 pb-2 items-center"}>
+						<h3 className="text-lg text-center">Stage:</h3>
 
-					<Badge>{formattedStage}</Badge>
-				</div>
-				<h3 className="text-lg">Notes</h3>
-				<Textarea
-					disabled={!edit}
-					value={proof.notes ?? ""}
-					onChange={(e) => proof.setNotes(e.target.value)}
-				></Textarea>
-				<h3 className="text-lg">Upload</h3>
-				<Input
-					type="file"
-					accept="application/pdf"
-					disabled={!edit || loading}
-					onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-				/>
-			</CardContent>
-			<CardFooter className="gap-1">
-				<Button onClick={handleSubmit} disabled={!edit}>
-					Submit
-				</Button>
-				<Button variant="outline" onClick={handlers.close}>
-					Cancel
-				</Button>
-				{loading && <Spinner />}
-			</CardFooter>
-		</Card>
+						<Badge>{formattedStage}</Badge>
+					</div>
+					<h3 className="text-lg">Notes</h3>
+					<Textarea
+						disabled={!edit}
+						value={proof.notes ?? ""}
+						onChange={(e) => proof.setNotes(e.target.value)}
+					></Textarea>
+					<h3 className="text-lg">Upload</h3>
+					<Input
+						type="file"
+						accept="application/pdf"
+						disabled={!edit || loading}
+						onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+					/>
+				</CardContent>
+				<CardFooter className="gap-1">
+					<Button onClick={handleSubmit} disabled={!edit}>
+						Submit
+					</Button>
+					<Button variant="outline" onClick={handlers.close}>
+						Cancel
+					</Button>
+					{loading && <Spinner />}
+				</CardFooter>
+			</Card>
+		</div>
 	);
 }

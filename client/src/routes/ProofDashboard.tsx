@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { Nav } from "@/components/Nav.tsx";
+
 import { ProofCard } from "@/components/Proof.tsx";
 import { ProofColumns } from "@/components/ProofColumns.tsx";
 import { Card, CardDescription, CardHeader } from "@/components/ui/card.tsx";
@@ -10,20 +10,21 @@ import {
 	ProofArrayModel,
 	type ProofHandlers,
 	type ProofUpdate,
-	UserModel,
+	// UserModel,
 } from "@/types";
+import { useUser } from "../hooks/use-user";
 
-function useUser() {
-	return useQuery({
-		queryKey: ["users"],
-		queryFn: async ({ signal }) => {
-			const res = await fetch(`/api/me`, { signal });
-			if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-			const data = await res.json();
-			return UserModel.parse(data);
-		},
-	});
-}
+// function useUser() {
+// 	return useQuery({
+// 		queryKey: ["users"],
+// 		queryFn: async ({ signal }) => {
+// 			const res = await fetch(`/api/me`, { signal });
+// 			if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+// 			const data = await res.json();
+// 			return UserModel.parse(data);
+// 		},
+// 	});
+// }
 
 function useProofs() {
 	return useQuery({
@@ -37,9 +38,9 @@ function useProofs() {
 	});
 }
 
-function App() {
+function ProofDashboard() {
 	const queryClient = useQueryClient();
-	const { data: user, error, isLoading } = useUser();
+	const { user, error, isLoading } = useUser();
 	const {
 		data: proofs,
 		error: proofError,
@@ -169,30 +170,26 @@ function App() {
 		: null;
 	if (proofs)
 		return (
-			<>
-				<Nav admin={user.role === "admin"} queryClient={queryClient} />
-
-				<div className={"flex flex-col md:flex-row gap-3 p-4"}>
-					{activeProof ? (
-						<ProofCard
-							key={activeProof.id}
-							proof={activeProof}
-							handlers={handlers}
-							edit={activeProof.can_edit}
-						/>
-					) : (
-						<div className="w-full md:h-[90vh] h-85 rounded-md  flex items-center justify-center border-2 border-plum-light border-dashed">
-							<span className="text-center">No Proof Selected</span>{" "}
-						</div>
-					)}
-					<ProofColumns
-						proofs={proofs}
-						setActive={handleActive}
-						stage={user.username}
+			<div className={"flex flex-col md:flex-row gap-3 p-4"}>
+				{activeProof ? (
+					<ProofCard
+						key={activeProof.id}
+						proof={activeProof}
+						handlers={handlers}
+						edit={activeProof.can_edit}
 					/>
-				</div>
-			</>
+				) : (
+					<div className="w-full md:h-[90vh] h-85 rounded-md  flex items-center justify-center border-2 border-plum-light border-dashed">
+						<span className="text-center">No Proof Selected</span>{" "}
+					</div>
+				)}
+				<ProofColumns
+					proofs={proofs}
+					setActive={handleActive}
+					stage={user.username}
+				/>
+			</div>
 		);
 }
 
-export default App;
+export default ProofDashboard;
