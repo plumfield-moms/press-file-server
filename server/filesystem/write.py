@@ -32,7 +32,7 @@ async def write_store(file: UploadFile, store_id: str):
         async with await anyio.open_file(tmp, "wb") as f:
             while chunk := await file.read(1024 * 1024):
                 await f.write(chunk)
-        os.replace(tmp, PROOF_DIR.joinpath(f"{store_id}.pdf"))
+        os.replace(tmp, VAULT.joinpath(f"{store_id}.pdf"))
     except Exception as e:
         tmp.unlink(missing_ok=True)
         print(f"[WRITE FILE] ERROR: unable to write file. {e}")

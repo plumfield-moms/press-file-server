@@ -157,7 +157,7 @@ def update_vault_store(store_id: str):
         cur = conn.cursor()
         cur.execute(
             # sql
-            "UPDATE vault SET now = ? WHERE store_id = ?",
+            "UPDATE vault SET last_edited_time = ? WHERE store_id = ?",
             [now, store_id],
         )
 
