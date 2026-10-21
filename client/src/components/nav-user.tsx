@@ -32,10 +32,11 @@ export function NavUser() {
 			<SidebarMenuItem>
 				<DropdownMenu>
 					<DropdownMenuTrigger
+						className={"cursor-pointer"}
 						render={
 							<SidebarMenuButton
 								size="lg"
-								className="aria-expanded:bg-secondary aria-expanded:text-primary-foreground"
+								className="aria-expanded:bg-secondary aria-expanded:text-primary-foreground "
 							/>
 						}
 					>
@@ -68,7 +69,12 @@ export function NavUser() {
 							</DropdownMenuLabel>
 						</DropdownMenuGroup>
 						<DropdownMenuGroup>
-							<DropdownMenuItem>
+							<DropdownMenuItem
+								className={"cursor-pointer"}
+								render={
+									<a href="https://plumfieldmoms.cloudflareaccess.com/cdn-cgi/access/logout" />
+								}
+							>
 								<LogOutIcon />
 								Log out
 							</DropdownMenuItem>
