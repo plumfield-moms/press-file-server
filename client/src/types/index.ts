@@ -16,6 +16,12 @@ export const UserModel = z.object({
 	name: z.string(),
 });
 
+export const StoreModel = z.object({
+	store_id: z.string(),
+	title: z.string(),
+	last_edited_time: z.string(),
+});
+
 export type Proof = z.infer<typeof ProofModel>;
 export const ProofArrayModel = z.array(ProofModel);
 export type ProofArray = z.infer<typeof ProofArrayModel>;
@@ -30,3 +36,6 @@ export interface ProofHandlers {
 	submit: (file: File) => Promise<void>;
 	close: () => void;
 }
+export const VaultModel = z.array(StoreModel);
+export type Store = z.infer<typeof StoreModel>;
+export type Vault = z.infer<typeof VaultModel>;
