@@ -2,7 +2,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 
-from server.database.db import insert_vault_store
+from server.database.db import insert_vault_store, list_vault_stores
 from server.filesystem.write import write_store
 from server.users import CurrentUser
 
@@ -30,3 +30,8 @@ async def create_new_store(
         print("[STORE CREATION] Error creating store:")
         print(f"[STRORE CREATION]\t{e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@router.get("/list")
+def list_all_stores(user: CurrentUser):
+    return list_vault_stores()

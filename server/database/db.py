@@ -7,7 +7,7 @@ from sqlite3 import Connection
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from server.types import State
+from server.types import State, Store
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATE_DB_PATH = Path(__file__).with_name("state.sqlite")
@@ -149,3 +149,31 @@ def insert_vault_store(store_id: str, title: str):
             "INSERT INTO vault (store_id, title, last_edited_time) VALUES (?,?,?)",
             [store_id, title, now],
         )
+
+
+def update_vault_store(store_id: str):
+    now = datetime.datetime.now(tz=ZoneInfo("America/Chicago")).date().isoformat()
+    with state_db_con() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            # sql
+            "UPDATE vault SET now = ? WHERE store_id = ?",
+            [now, store_id],
+        )
+
+
+def list_vault_stores():
+    with state_db_con() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            # sql
+            "SELECT store_id, title, last_edited_time FROM vault ORDER BY last_edited_time DESC"
+        )
+        stores = cur.fetchall()
+        vault: list[Store] = []
+        if stores:
+            for store in stores:
+                vault.append(
+                    Store(store_id=store[0], title=store[1], last_edited_time=store[2])
+                )
+        return vault

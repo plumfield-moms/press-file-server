@@ -28,3 +28,9 @@ class Proof(BaseModel):
     notes: str | None = None
     title: str
     can_edit: bool | None = None
+
+
+class Store(BaseModel):
+    store_id: str
+    title: str
+    last_edited_time: str
