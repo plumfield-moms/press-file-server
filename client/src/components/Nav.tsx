@@ -45,7 +45,7 @@ export function Nav({
 				<span className="font-bold">Plumfield Press</span>
 				<DialogTrigger render={<Button variant={"secondary"}>Create</Button>} />
 			</nav>
-			<Admin submit={handleSubmit} />
+			<Admin submitProof={handleSubmit} />
 		</Dialog>
 	);
 }

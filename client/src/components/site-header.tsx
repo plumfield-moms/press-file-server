@@ -42,6 +42,27 @@ export function SiteHeader({ queryClient }: { queryClient: QueryClient }) {
 			await queryClient.invalidateQueries({ queryKey: ["proofs"] });
 		}
 	}
+
+	async function handleStore(file: File, title: string) {
+		const formData = new FormData();
+		formData.append("title", title);
+		formData.append("file", file);
+		const res = await fetch(`/api/vault/new`, {
+			method: "POST",
+			body: formData,
+		});
+		if (!res.ok) {
+			toast.add({
+				type: "error",
+				description: await res.text(),
+			});
+		} else {
+			toast.add({
+				description: "Success!",
+			});
+			await queryClient.invalidateQueries({ queryKey: ["vault"] });
+		}
+	}
 	if (!admin) {
 		return (
 			<header className="sticky top-0 z-50 flex w-full items-center border-b  bg-plum text-paper">
@@ -105,7 +126,7 @@ export function SiteHeader({ queryClient }: { queryClient: QueryClient }) {
 						/>
 					</div>
 				</header>
-				<Admin submit={handleSubmit} />
+				<Admin submitProof={handleSubmit} submitStore={handleStore} />
 			</Dialog>
 		);
 	}
