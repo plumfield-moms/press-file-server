@@ -79,15 +79,18 @@ export function SiteHeader({ queryClient }: { queryClient: QueryClient }) {
 						orientation="vertical"
 						className="mr-2 data-vertical:h-4 data-vertical:self-auto"
 					/>
-					<Breadcrumb className="hidden sm:block">
+					{/*<Breadcrumb className="hidden sm:block">
 						<BreadcrumbList>
-							<BreadcrumbItem>
-								<BreadcrumbLink className="text-paper hover:text-paper">
+							<BreadcrumbItem className="text-2xl">
+								<BreadcrumbLink className="text-paper hover:text-paper ">
 									Plumfield Press
 								</BreadcrumbLink>
 							</BreadcrumbItem>
 						</BreadcrumbList>
-					</Breadcrumb>
+					</Breadcrumb>*/}
+					<span className="text-paper hover:text-paper !text-2xl ">
+						Plumfield Press
+					</span>
 				</div>
 			</header>
 		);
