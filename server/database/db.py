@@ -1,14 +1,17 @@
+import datetime
 import sqlite3
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 from sqlite3 import Connection
 from typing import Any
+from zoneinfo import ZoneInfo
 
-from server.types import State
+from server.types import State, Store
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATE_DB_PATH = Path(__file__).with_name("state.sqlite")
+
 
 @contextmanager
 def state_db_con() -> Generator[Connection, Any]:
@@ -28,12 +31,24 @@ def state_db_con() -> Generator[Connection, Any]:
     finally:
         conn.close()
 
+
 def state_db_setup() -> None:
     """Initial Database setup"""
     with state_db_con() as conn:
         conn.execute(
+            # sql
             "CREATE TABLE IF NOT EXISTS state (filepath TEXT PRIMARY KEY, title TEXT, state TEXT,notes TEXT);"
         )
+
+
+def vault_db_setup() -> None:
+    """Initial Store Setup"""
+    with state_db_con() as conn:
+        conn.execute(
+            # sql
+            "CREATE TABLE IF NOT EXISTS vault (store_id TEXT PRIMARY KEY, title TEXT NOT NULL, last_edited_time TEXT NOT NULL); "
+        )
+
 
 def get_all_files() -> list[State] | None:
     """Lists all proofs in the database
@@ -47,11 +62,19 @@ def get_all_files() -> list[State] | None:
         if states:
             final = []
             for state in states:
-                final.append(State(filepath=state[0], title=state[1], stage=state[2], notes=state[3]))
+                final.append(
+                    State(
+                        filepath=state[0],
+                        title=state[1],
+                        stage=state[2],
+                        notes=state[3],
+                    )
+                )
             return final
         return None
 
-def get_file(proof_id: str)->State | None:
+
+def get_file(proof_id: str) -> State | None:
     """Gets the current state for a given proof
     :param proof_id: The proof ID to look up
     :type proof_id: str
@@ -61,11 +84,16 @@ def get_file(proof_id: str)->State | None:
 
     with state_db_con() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT title, state, notes from state WHERE filepath= ?",(proof_id,))
+        cursor.execute(
+            "SELECT title, state, notes from state WHERE filepath= ?", (proof_id,)
+        )
         state = cursor.fetchone()
         if state:
-            return State(title=state[0], stage=state[1], filepath=proof_id, notes=state[2])
+            return State(
+                title=state[0], stage=state[1], filepath=proof_id, notes=state[2]
+            )
         return None
+
 
 def insert_file(proof_id: str, title: str, stage: str):
     """Adds a new proof to the state db
@@ -79,7 +107,11 @@ def insert_file(proof_id: str, title: str, stage: str):
     """
     with state_db_con() as conn:
         cursor = conn.cursor()
-        cursor.execute("INSERT OR IGNORE INTO state (filepath, title, state) VALUES (?,?,?);", (proof_id, title, stage))
+        cursor.execute(
+            "INSERT OR IGNORE INTO state (filepath, title, state) VALUES (?,?,?);",
+            (proof_id, title, stage),
+        )
+
 
 def update_proof(proof_id: str, notes: str, title: str, stage: str):
     """Updates a proof in the state db
@@ -106,3 +138,42 @@ def update_proof(proof_id: str, notes: str, title: str, stage: str):
                        """,
             (proof_id, title, notes, stage),
         )
+
+
+def insert_vault_store(store_id: str, title: str):
+    now = datetime.datetime.now(tz=ZoneInfo("America/Chicago")).date().isoformat()
+    with state_db_con() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            # sql
+            "INSERT INTO vault (store_id, title, last_edited_time) VALUES (?,?,?)",
+            [store_id, title, now],
+        )
+
+
+def update_vault_store(store_id: str):
+    now = datetime.datetime.now(tz=ZoneInfo("America/Chicago")).date().isoformat()
+    with state_db_con() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            # sql
+            "UPDATE vault SET last_edited_time = ? WHERE store_id = ?",
+            [now, store_id],
+        )
+
+
+def list_vault_stores():
+    with state_db_con() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            # sql
+            "SELECT store_id, title, last_edited_time FROM vault ORDER BY last_edited_time DESC"
+        )
+        stores = cur.fetchall()
+        vault: list[Store] = []
+        if stores:
+            for store in stores:
+                vault.append(
+                    Store(store_id=store[0], title=store[1], last_edited_time=store[2])
+                )
+        return vault

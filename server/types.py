@@ -9,9 +9,11 @@ class State(BaseModel):
     title: str
     notes: str | None = None
 
+
 class Roles(Enum):
     USER = "user"
     ADMIN = "admin"
+
 
 class User(BaseModel):
     email: str
@@ -26,3 +28,9 @@ class Proof(BaseModel):
     notes: str | None = None
     title: str
     can_edit: bool | None = None
+
+
+class Store(BaseModel):
+    store_id: str
+    title: str
+    last_edited_time: str

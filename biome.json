@@ -1,0 +1,19 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "linter": {
+    "rules": {
+      "a11y": "off",
+      "style": {
+        "noNonNullAssertion": "off"
+      },
+      "suspicious": {
+        "noDocumentCookie": "off"
+      }
+    }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  }
+}

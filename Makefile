@@ -6,3 +6,8 @@ dev:
 	uv run python -m server.main & \
 	(cd client && pnpm dev) & \
 	wait
+
+lint:
+	cd client && pnpm lint
+	ruff check
+	ruff format
