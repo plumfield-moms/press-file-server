@@ -1,72 +1,141 @@
 # Plumfield Press Proof Review System
 
-A local-first, multi-stage editorial workflow system for book manuscripts.
+A local-first, multi-stage editorial workflow for reviewing book manuscript PDFs.
 
-## System Architecture
+## Repository layout
 
-- **/server**: Python (FastAPI + FastMCP + SQLite3 + Uvicorn)
-  - `/server/api`: REST API endpoints for user authentication, proof creation, listing, downloading, and updating.
-  - `/server/state_machine`: Stage progression and workflow state machine logic.
-  - `/server/database`: SQLite database connection and state persistence (`state.sqlite`).
-  - `/server/filesystem`: Storage and file reading/writing handlers for manuscript PDFs.
-  - `/server/server_mcp`: FastMCP endpoint exposing proof state tools for AI agents mounted at `/mcp`.
-- **/client**: React 19 + TypeScript + Vite + Tailwind CSS v4 + React Query + Shadcn UI
-  - Interactive proof review dashboard featuring stage columns and active proof editing.
-- **/proofs**: Local directory storage for PDF manuscript proofs.
+The application consists of a Python backend and a Vite/React frontend:
 
-## Review Workflow
-
-Proofs progress through a sequential multi-stage review order:
-
-1. **Admin (Manual / Dashboard)**: Uploads or registers a new proof (`{id}.pdf`).
-2. **Kristi**: Stage `kristi`
-3. **Ed**: Stage `ed`
-4. **Diane**: Stage `diane`
-5. **Sara**: Stage `sara`
-6. **Greta**: Stage `greta`
-7. **Done**: Stage `done` (Final review complete)
-
-## Requirements & Environment Configuration
-
-- **Python**: `>=3.14` (managed with `uv` or standard Python virtual environment)
-- **Node.js & Package Manager**: Node >=22, `pnpm`
-- **Environment File**: `server/.env`
-
-Example `server/.env`:
-```env
-ENV=localhost
-PROOFS_DIR="/path/to/proofs"
-TUNNEL_TOKEN=your_cloudflare_tunnel_token
-GMAIL_TOKEN=some_token_from_google
+```text
+.
+├── client/                 # React, TypeScript, Vite, Tailwind CSS, and shadcn/ui
+│   └── src/
+├── proofs/                 # Working proof PDFs
+├── server/
+│   ├── api/                # FastAPI routes for authentication and proof operations
+│   ├── database/           # SQLite state and vault metadata
+│   ├── filesystem/         # Proof and vault file access
+│   ├── server_mcp/         # Live FastMCP server
+│   ├── state_machine/      # Review-stage progression
+│   ├── vault/              # Vault routes
+│   └── main.py             # FastAPI application entry point
+├── vault/                  # Finalized manuscripts retained for long-term access
+└── Makefile
 ```
 
-## Setup & Running
+`server/server_mcp/` is the active MCP implementation. The deprecated top-level
+`mcp-server/` directory is not part of the running application.
 
-1. **Install dependencies:**
-   ```bash
-   pnpm run install-all
-   ```
+## Review workflow
 
-2. **Run in Development Mode:**
-   ```bash
-   make dev
-   # or
-   pnpm run dev
-   ```
+An administrator creates a proof by uploading a PDF and a book title. The server
+assigns a UUID and stores the working file as `{id}.pdf`. Each review submission
+replaces that working PDF and advances it to the next stage:
 
-3. **Access the application:**
-   - Frontend (Vite Dev): [http://localhost:5173](http://localhost:5173)
-   - Backend API: [http://localhost:3001](http://localhost:3001)
-   - FastMCP Endpoint: [http://localhost:3001/mcp](http://localhost:3001/mcp)
+1. **Admin** creates the proof.
+2. **Kristi** reviews it (`kristi`).
+3. **Ed** reviews it (`ed`).
+4. **Diane** reviews it (`diane`).
+5. **Sara** reviews it (`sara`).
+6. **Greta** reviews it (`greta`).
+7. **Done** marks the final stage (`done`).
 
-4. **Production Deployment / LaunchAgent:**
-   Execute `./start.sh` to run the system with Cloudflare Tunnel integration.
+Proof metadata and the current stage are stored in SQLite at
+`server/database/state.sqlite`. The working PDF files live in `proofs/`.
 
-## Useful Commands
+> TODO: Add email notifications for proof status updates
 
-- `make dev`: Starts the FastAPI server (`uv run python -m server.main`) and Vite client (`pnpm dev`) concurrently.
-- `make export`: Exports Python dependencies to `requirements.txt` via `uv`.
+## Vault
 
-## Security & Authentication
+The vault is a place to store finished manuscripts. Once a book is completed, the final pdf is stored on an external drive (`/Volumes/Plumfield/.press-file-server/vault`).
 
-In production, Cloudflare Zero Trust handles authentication by passing the user's email via the `cf-access-authenticated-user-email` (or `x-user-email`) HTTP header. The backend maps authorized emails to specific internal user roles (`admin` or `user`) and review stages. In local development (`ENV=localhost`), authentication automatically uses dev admin credentials.
+An admin uploads a pdf with the book's title to the server, where it is given a UUID and written to the external location. the UUID is store in the `vault` table in `server/database/state.sqlite`. Anyone can download the finished file - only an admin can overwrite it with a new version.
+
+In dev mode vault stores are written to `vault/` instead so development doesn't need to wrangle mounted volume issues.
+
+> TODO: Add support for .af files so we can archive the Affinity file for the book
+
+## Requirements
+
+- Python 3.14 or newer
+- `uv`
+- Node.js 22 or newer
+- `pnpm`
+- `cloudflared` for non-localhost deployment
+
+## Configuration
+
+Create or update `server/.env` with the required runtime settings:
+
+```env
+ENV=localhost
+TUNNEL_TOKEN=your_cloudflare_tunnel_token
+```
+
+`ENV=localhost` enables the development login and does not start Cloudflare
+Tunnel. In production, authentication is based on the
+`cf-access-authenticated-user-email` or `x-user-email` request header. The
+authorized reviewer accounts and roles are currently defined in
+`server/users.py`.
+
+## Installation and development
+
+Install the Python and frontend dependencies:
+
+```bash
+uv sync
+cd client
+pnpm install
+cd ..
+```
+
+Start both services in development mode:
+
+```bash
+make dev
+```
+
+This runs the FastAPI server and the Vite development server concurrently.
+Alternatively, start them separately:
+
+```bash
+uv run python -m server.main
+cd client && pnpm dev
+```
+
+The development endpoints are:
+
+- Frontend: <http://localhost:5173>
+- FastAPI application: <http://localhost:3001>
+- REST API: <http://localhost:3001/api>
+- MCP HTTP application: mounted at <http://localhost:3001/api>
+
+The frontend is served from the built `dist/` directory when running the
+FastAPI application outside Vite.
+
+## Startup
+
+After configuring `server/.env` and activating the virtual environment, run:
+
+```bash
+python3 -m server.main
+```
+
+Outside localhost mode, the application starts the Cloudflare Tunnel from the
+backend using `TUNNEL_TOKEN`.
+
+## Useful commands
+
+```bash
+make dev       # Run the backend and frontend development servers
+make lint      # Run Biome and Ruff checks/formatting
+make export    # Export uv dependencies to requirements.txt
+```
+
+Frontend-specific commands can be run from `client/`:
+
+```bash
+pnpm build
+pnpm lint
+pnpm preview
+```
